@@ -9,6 +9,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -19,6 +20,10 @@ class Profile extends Component
 
     public string $name = '';
 
+    /**
+     * The user's email address, shown read-only because it cannot be changed from the profile.
+     */
+    #[Locked]
     public string $email = '';
 
     /**
@@ -37,15 +42,11 @@ class Profile extends Component
     {
         $user = Auth::user();
 
-        $validated = $this->validate($this->profileRules($user->id));
+        $validated = $this->validate([
+            'name' => $this->nameRules(),
+        ]);
 
-        $user->fill($validated);
-
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
-        }
-
-        $user->save();
+        $user->update($validated);
 
         Flux::toast(variant: 'success', text: __('Profile updated.'));
     }
