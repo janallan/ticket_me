@@ -15,6 +15,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call([
+            PermissionSeeder::class,
+            RoleSeeder::class,
+        ]);
+
         $admin = User::firstOrNew(['email' => 'admin@example.com']);
 
         if (! $admin->exists) {
@@ -23,6 +28,10 @@ class DatabaseSeeder extends Seeder
                 'password' => 'password',
                 'email_verified_at' => now(),
             ])->save();
+        }
+
+        if ($admin->roles()->doesntExist()) {
+            $admin->assignRole('Admin');
         }
     }
 }
