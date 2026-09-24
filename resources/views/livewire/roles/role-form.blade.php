@@ -1,4 +1,6 @@
 <section class="w-full">
+    <x-slot:title>{{ $this->role ? __('Edit role') : __('New role') }}</x-slot:title>
+
     <div class="mb-6">
         <flux:breadcrumbs class="mb-2">
             <flux:breadcrumbs.item :href="route('roles.index')" wire:navigate>{{ __('Roles') }}</flux:breadcrumbs.item>

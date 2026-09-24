@@ -1,4 +1,6 @@
 <section class="w-full">
+    <x-slot:title>{{ $this->user ? __('Edit user') : __('New user') }}</x-slot:title>
+
     <div class="mb-6">
         <flux:breadcrumbs class="mb-2">
             <flux:breadcrumbs.item :href="route('users.index')" wire:navigate>{{ __('Users') }}</flux:breadcrumbs.item>

@@ -248,7 +248,6 @@ class UserForm extends Component
 
     public function render(): View
     {
-        return view('livewire.users.user-form')
-            ->title($this->userId ? __('Edit user') : __('New user'));
+        return view('livewire.users.user-form');
     }
 }

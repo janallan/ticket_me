@@ -168,7 +168,6 @@ class RoleForm extends Component
 
     public function render(): View
     {
-        return view('livewire.roles.role-form')
-            ->title($this->roleId ? __('Edit role') : __('New role'));
+        return view('livewire.roles.role-form');
     }
 }

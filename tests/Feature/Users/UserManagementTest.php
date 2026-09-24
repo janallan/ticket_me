@@ -33,8 +33,8 @@ class UserManagementTest extends TestCase
         $agent = $this->userWithRole('Agent');
 
         $this->get(route('users.index'))->assertOk()->assertSee($agent->email);
-        $this->get(route('users.create'))->assertOk();
-        $this->get(route('users.edit', $agent))->assertOk();
+        $this->get(route('users.create'))->assertOk()->assertSee('New user - '.config('app.name'));
+        $this->get(route('users.edit', $agent))->assertOk()->assertSee('Edit user - '.config('app.name'));
     }
 
     public function test_users_without_the_users_permission_cannot_access_the_users_pages(): void

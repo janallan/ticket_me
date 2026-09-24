@@ -28,8 +28,8 @@ class RoleManagementTest extends TestCase
         $this->actingAs($this->userWithRole('Admin'));
 
         $this->get(route('roles.index'))->assertOk()->assertSee('Manager');
-        $this->get(route('roles.create'))->assertOk();
-        $this->get(route('roles.edit', Role::findByName('Agent')))->assertOk();
+        $this->get(route('roles.create'))->assertOk()->assertSee('New role - '.config('app.name'));
+        $this->get(route('roles.edit', Role::findByName('Agent')))->assertOk()->assertSee('Edit role - '.config('app.name'));
     }
 
     public function test_users_without_the_roles_permission_cannot_access_the_roles_pages(): void
