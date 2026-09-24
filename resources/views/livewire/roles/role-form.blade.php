@@ -22,7 +22,6 @@
                     :value="$permission->value"
                     :label="$permission->label()"
                     :description="$permission->description()"
-                    :disabled="! in_array($permission->value, $this->grantablePermissions, true)"
                     wire:key="permission-{{ $permission->value }}"
                 />
             @endforeach

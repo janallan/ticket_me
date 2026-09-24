@@ -4,9 +4,7 @@ namespace App\Livewire\Roles;
 
 use App\Actions\Roles\EnsureRoleManagerRemains;
 use App\Enums\Permission;
-use App\Models\User;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -16,7 +14,6 @@ use Spatie\Permission\Models\Role;
 
 /**
  * @property-read Role|null $role
- * @property-read list<string> $grantablePermissions
  */
 class RoleForm extends Component
 {
@@ -60,17 +57,6 @@ class RoleForm extends Component
     }
 
     /**
-     * Get the permission names the current user may grant or revoke.
-     *
-     * @return list<string>
-     */
-    #[Computed]
-    public function grantablePermissions(): array
-    {
-        return $this->actor()->getAllPermissions()->pluck('name')->values()->all();
-    }
-
-    /**
      * Create or update the role and sync its permissions.
      */
     public function save(EnsureRoleManagerRemains $ensureRoleManagerRemains): void
@@ -90,7 +76,7 @@ class RoleForm extends Component
             'permissions.*' => [Rule::enum(Permission::class)],
         ]);
 
-        $permissions = $this->resolvePermissions($role, $validated['permissions'] ?? []);
+        $permissions = array_values(array_unique($validated['permissions'] ?? []));
 
         if ($role) {
             $ensureRoleManagerRemains->forRole($role, $permissions);
@@ -130,40 +116,6 @@ class RoleForm extends Component
         session()->flash('toast', __('Role :name deleted.', ['name' => $role->name]));
 
         $this->redirectRoute('roles.index', navigate: true);
-    }
-
-    /**
-     * Combine the submitted permissions with the ones the current user is not allowed to change.
-     *
-     * Users can only grant or revoke permissions they hold themselves, so any other permission
-     * keeps its current state on the role.
-     *
-     * @param  list<string>  $submitted
-     * @return list<string>
-     */
-    private function resolvePermissions(?Role $role, array $submitted): array
-    {
-        $grantable = $this->grantablePermissions;
-
-        $granted = array_intersect($submitted, $grantable);
-
-        $locked = $role
-            ? array_diff($role->permissions->pluck('name')->all(), $grantable)
-            : [];
-
-        return array_values(array_unique([...$granted, ...$locked]));
-    }
-
-    /**
-     * Get the currently authenticated user.
-     */
-    private function actor(): User
-    {
-        $user = Auth::user();
-
-        abort_unless($user instanceof User, 403);
-
-        return $user;
     }
 
     public function render(): View

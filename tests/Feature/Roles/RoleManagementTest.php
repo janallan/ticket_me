@@ -109,39 +109,40 @@ class RoleManagementTest extends TestCase
             ->assertHasErrors(['permissions.0']);
     }
 
-    public function test_users_cannot_grant_permissions_they_do_not_hold(): void
+    public function test_role_managers_can_grant_permissions_they_do_not_hold(): void
     {
         $roleManager = Role::create(['name' => 'Role Manager']);
         $roleManager->givePermissionTo(Permission::Roles->value);
 
         $this->actingAs($this->userWithRole('Role Manager'));
 
-        Livewire::test(RoleForm::class)
-            ->set('name', 'Supervisor')
+        Livewire::test(RoleForm::class, ['role' => $roleManager])
             ->set('permissions', [Permission::Users->value, Permission::Roles->value])
             ->call('save')
             ->assertHasNoErrors();
 
-        $supervisor = Role::findByName('Supervisor');
+        $roleManager->refresh();
 
-        $this->assertTrue($supervisor->hasPermissionTo(Permission::Roles->value));
-        $this->assertFalse($supervisor->hasPermissionTo(Permission::Users->value));
+        $this->assertTrue($roleManager->hasPermissionTo(Permission::Users->value));
+        $this->assertTrue($roleManager->hasPermissionTo(Permission::Roles->value));
     }
 
-    public function test_users_cannot_revoke_permissions_they_do_not_hold(): void
+    public function test_role_managers_can_revoke_permissions_they_do_not_hold(): void
     {
         $roleManager = Role::create(['name' => 'Role Manager']);
         $roleManager->givePermissionTo(Permission::Roles->value);
 
         $this->actingAs($this->userWithRole('Role Manager'));
-        $this->userWithRole('Admin');
 
-        Livewire::test(RoleForm::class, ['role' => Role::findByName('Admin')])
+        $supervisor = Role::create(['name' => 'Supervisor']);
+        $supervisor->givePermissionTo(Permission::Users->value);
+
+        Livewire::test(RoleForm::class, ['role' => $supervisor])
             ->set('permissions', [])
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertTrue(Role::findByName('Admin')->hasPermissionTo(Permission::Users->value));
+        $this->assertFalse($supervisor->refresh()->hasPermissionTo(Permission::Users->value));
     }
 
     public function test_role_management_cannot_be_removed_from_the_last_role_manager(): void
