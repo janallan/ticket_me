@@ -9,6 +9,9 @@ enum Permission: string
 {
     case Users = 'users';
     case Roles = 'roles';
+    case Departments = 'departments';
+    case TicketStatuses = 'ticket-statuses';
+    case TicketPriorities = 'ticket-priorities';
 
     /**
      * Get the human-readable name of the permission.
@@ -18,6 +21,9 @@ enum Permission: string
         return match ($this) {
             self::Users => __('Users'),
             self::Roles => __('Roles'),
+            self::Departments => __('Departments'),
+            self::TicketStatuses => __('Ticket statuses'),
+            self::TicketPriorities => __('Ticket priorities'),
         };
     }
 
@@ -29,6 +35,9 @@ enum Permission: string
         return match ($this) {
             self::Users => __('View, add, edit and deactivate users.'),
             self::Roles => __('Manage roles and their permissions.'),
+            self::Departments => __('Manage departments and their members.'),
+            self::TicketStatuses => __('Manage ticket statuses.'),
+            self::TicketPriorities => __('Manage ticket priorities.'),
         };
     }
 }

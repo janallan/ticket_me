@@ -3,13 +3,16 @@
 namespace App\Livewire\Users;
 
 use App\Actions\Roles\EnsureRoleManagerRemains;
+use App\Actions\Users\SyncUserDepartments;
 use App\Concerns\ProfileValidationRules;
+use App\Models\Department;
 use App\Models\User;
 use App\Notifications\SetPasswordNotification;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -21,6 +24,8 @@ use Spatie\Permission\Models\Role;
 /**
  * @property-read User|null $user
  * @property-read Collection<int, Role> $assignableRoles
+ * @property-read Collection<int, Department> $availableDepartments
+ * @property-read Collection<int, Department> $chosenDepartments
  * @property-read bool $canChangeRole
  */
 class UserForm extends Component
@@ -40,6 +45,18 @@ class UserForm extends Component
     public string $role = '';
 
     /**
+     * The IDs of the departments the user belongs to. A user can belong to any number of departments.
+     *
+     * @var list<string>
+     */
+    public array $departments = [];
+
+    /**
+     * The ID of the user's default department, which must be one of their departments.
+     */
+    public string $defaultDepartment = '';
+
+    /**
      * Mount the component for creating a new user or editing an existing one.
      */
     public function mount(?User $user = null): void
@@ -51,11 +68,27 @@ class UserForm extends Component
             $this->name = $user->name;
             $this->email = $user->email;
             $this->role = $user->assignedRole()->name ?? '';
+            $this->departments = $user->departments()->pluck('departments.id')->map(fn (int $id) => (string) $id)->all();
+            $this->defaultDepartment = (string) $user->default_department_id;
 
             return;
         }
 
         $this->authorize('create', User::class);
+    }
+
+    /**
+     * Keep the default department within the chosen departments, picking the first one when none is set.
+     */
+    public function updatedDepartments(): void
+    {
+        if (in_array($this->defaultDepartment, $this->departments, true)) {
+            return;
+        }
+
+        $firstChosen = $this->chosenDepartments->first();
+
+        $this->defaultDepartment = $firstChosen ? (string) $firstChosen->id : '';
     }
 
     /**
@@ -86,6 +119,33 @@ class UserForm extends Component
     }
 
     /**
+     * Get the active departments the user can join, plus any they already belong to.
+     *
+     * @return Collection<int, Department>
+     */
+    #[Computed]
+    public function availableDepartments(): Collection
+    {
+        return Department::query()
+            ->where(fn ($query) => $query->active()->orWhereIn('id', $this->departments))
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Get the departments currently ticked on the form, in display order.
+     *
+     * @return Collection<int, Department>
+     */
+    #[Computed]
+    public function chosenDepartments(): Collection
+    {
+        return $this->availableDepartments
+            ->filter(fn (Department $department) => in_array((string) $department->id, $this->departments, true))
+            ->values();
+    }
+
+    /**
      * Determine whether the role field can be changed for this user.
      */
     #[Computed]
@@ -97,7 +157,7 @@ class UserForm extends Component
     /**
      * Create the user, or save changes to an existing user.
      */
-    public function save(EnsureRoleManagerRemains $ensureRoleManagerRemains): void
+    public function save(EnsureRoleManagerRemains $ensureRoleManagerRemains, SyncUserDepartments $syncUserDepartments): void
     {
         $user = $this->user;
 
@@ -112,10 +172,16 @@ class UserForm extends Component
             'role' => $changesRole
                 ? ['required', 'string', Rule::in($this->assignableRoles->pluck('name')->all())]
                 : ['nullable'],
+            'departments' => ['required', 'array', 'min:1'],
+            'departments.*' => ['integer', Rule::exists('departments', 'id')],
+            'defaultDepartment' => ['required', Rule::in($this->departments)],
+        ], [
+            'departments.required' => __('Choose at least one department.'),
+            'defaultDepartment.in' => __('The default department must be one of the user\'s departments.'),
         ]);
 
         if ($user === null) {
-            $this->createUser($validated['name'], $validated['email'], $validated['role']);
+            $this->createUser($syncUserDepartments, $validated['name'], $validated['email'], $validated['role'], $validated['departments'], (int) $validated['defaultDepartment']);
 
             return;
         }
@@ -124,14 +190,18 @@ class UserForm extends Component
             $ensureRoleManagerRemains->forUser($user, Role::findByName($validated['role']), deactivating: false, errorKey: 'role');
         }
 
-        $user->update([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-        ]);
+        DB::transaction(function () use ($user, $validated, $changesRole, $syncUserDepartments) {
+            $user->update([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+            ]);
 
-        if ($changesRole) {
-            $user->syncRoles([$validated['role']]);
-        }
+            if ($changesRole) {
+                $user->syncRoles([$validated['role']]);
+            }
+
+            $syncUserDepartments($user, $validated['departments'], (int) $validated['defaultDepartment']);
+        });
 
         unset($this->user);
 
@@ -189,20 +259,27 @@ class UserForm extends Component
     }
 
     /**
-     * Create a new user with the given role and email them a link to set their password.
+     * Create a new user with the given role and departments, and email them a link to set their password.
+     *
+     * @param  list<int|string>  $departments
      */
-    private function createUser(string $name, string $email, string $role): void
+    private function createUser(SyncUserDepartments $syncUserDepartments, string $name, string $email, string $role, array $departments, int $defaultDepartmentId): void
     {
-        $user = new User;
+        $user = DB::transaction(function () use ($syncUserDepartments, $name, $email, $role, $departments, $defaultDepartmentId) {
+            $user = new User;
 
-        $user->forceFill([
-            'name' => $name,
-            'email' => $email,
-            'password' => Str::password(32),
-            'email_verified_at' => now(),
-        ])->save();
+            $user->forceFill([
+                'name' => $name,
+                'email' => $email,
+                'password' => Str::password(32),
+                'email_verified_at' => now(),
+            ])->save();
 
-        $user->syncRoles([$role]);
+            $user->syncRoles([$role]);
+            $syncUserDepartments($user, $departments, $defaultDepartmentId);
+
+            return $user;
+        });
 
         $this->notifyToSetPassword($user);
 

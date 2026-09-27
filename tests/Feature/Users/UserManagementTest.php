@@ -2,15 +2,18 @@
 
 namespace Tests\Feature\Users;
 
+use App\Actions\Users\SyncUserDepartments;
 use App\Enums\Permission;
 use App\Livewire\Users\UserForm;
 use App\Livewire\Users\UserList;
+use App\Models\Department;
 use App\Models\User;
 use App\Notifications\SetPasswordNotification;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -86,10 +89,13 @@ class UserManagementTest extends TestCase
 
         $this->actingAs($this->userWithRole('Admin'));
 
+        $department = Department::factory()->create();
+
         Livewire::test(UserForm::class)
             ->set('name', 'New Agent')
             ->set('email', 'agent@example.com')
             ->set('role', 'Agent')
+            ->set('departments', [(string) $department->id])
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('users.index'));
@@ -101,6 +107,133 @@ class UserManagementTest extends TestCase
         $this->assertNotNull($user->email_verified_at);
 
         Notification::assertSentTo($user, SetPasswordNotification::class);
+    }
+
+    public function test_a_user_can_be_created_in_several_departments(): void
+    {
+        Notification::fake();
+
+        $this->actingAs($this->userWithRole('Admin'));
+
+        [$hr, $it] = Department::factory()->count(2)->create();
+
+        Livewire::test(UserForm::class)
+            ->set('name', 'New Agent')
+            ->set('email', 'agent@example.com')
+            ->set('role', 'Agent')
+            ->set('departments', [(string) $hr->id, (string) $it->id])
+            ->assertSet('defaultDepartment', (string) $hr->id)
+            ->set('defaultDepartment', (string) $it->id)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $user = User::where('email', 'agent@example.com')->firstOrFail();
+
+        $this->assertEqualsCanonicalizing([$hr->id, $it->id], $user->departments()->pluck('departments.id')->all());
+        $this->assertSame($it->id, $user->default_department_id);
+    }
+
+    public function test_editing_a_user_replaces_their_departments(): void
+    {
+        $this->actingAs($this->userWithRole('Admin'));
+
+        [$hr, $it, $facilities] = Department::factory()->count(3)->create();
+
+        $user = User::factory()->inDepartment($hr)->create()->assignRole('Agent');
+        $user->departments()->attach($it);
+
+        Livewire::test(UserForm::class, ['user' => $user])
+            ->assertSet('departments', [(string) $hr->id, (string) $it->id])
+            ->assertSet('defaultDepartment', (string) $hr->id)
+            ->set('departments', [(string) $it->id, (string) $facilities->id])
+            ->assertSet('defaultDepartment', (string) $it->id)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $user->refresh();
+
+        $this->assertEqualsCanonicalizing([$it->id, $facilities->id], $user->departments()->pluck('departments.id')->all());
+        $this->assertSame($it->id, $user->default_department_id);
+    }
+
+    public function test_a_user_must_have_a_department(): void
+    {
+        $this->actingAs($this->userWithRole('Admin'));
+
+        Livewire::test(UserForm::class)
+            ->set('name', 'New Agent')
+            ->set('email', 'agent@example.com')
+            ->set('role', 'Agent')
+            ->call('save')
+            ->assertHasErrors(['departments' => 'required', 'defaultDepartment' => 'required']);
+
+        $this->assertDatabaseMissing('users', ['email' => 'agent@example.com']);
+    }
+
+    public function test_the_default_department_must_be_one_of_the_users_departments(): void
+    {
+        $this->actingAs($this->userWithRole('Admin'));
+
+        [$hr, $it] = Department::factory()->count(2)->create();
+
+        Livewire::test(UserForm::class)
+            ->set('name', 'New Agent')
+            ->set('email', 'agent@example.com')
+            ->set('role', 'Agent')
+            ->set('departments', [(string) $hr->id])
+            ->set('defaultDepartment', (string) $it->id)
+            ->call('save')
+            ->assertHasErrors(['defaultDepartment' => 'in']);
+
+        $this->assertDatabaseMissing('users', ['email' => 'agent@example.com']);
+    }
+
+    public function test_syncing_departments_rejects_a_default_outside_them(): void
+    {
+        [$hr, $it] = Department::factory()->count(2)->create();
+
+        $user = User::factory()->inDepartment($hr)->create();
+
+        try {
+            app(SyncUserDepartments::class)($user, [$hr->id], $it->id);
+            $this->fail('Expected a validation error.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('defaultDepartment', $exception->errors());
+        }
+
+        $this->assertSame($hr->id, $user->refresh()->default_department_id);
+    }
+
+    public function test_inactive_departments_are_only_offered_to_their_current_members(): void
+    {
+        $this->actingAs($this->userWithRole('Admin'));
+
+        $inactive = Department::factory()->inactive()->create();
+
+        Livewire::test(UserForm::class)
+            ->assertDontSee($inactive->name);
+
+        $member = $this->userWithRole('Agent');
+        $member->departments()->attach($inactive);
+
+        Livewire::test(UserForm::class, ['user' => $member])
+            ->assertSee($inactive->name);
+    }
+
+    public function test_the_list_can_be_filtered_by_department(): void
+    {
+        $this->actingAs($this->userWithRole('Admin'));
+
+        $it = Department::factory()->create();
+
+        $jane = $this->userWithRole('Agent');
+        $jane->departments()->attach($it);
+        $mark = $this->userWithRole('Agent');
+
+        Livewire::test(UserList::class)
+            ->set('department', (string) $it->id)
+            ->assertSee($jane->email)
+            ->assertDontSee($mark->email);
     }
 
     public function test_a_role_is_required_when_creating_a_user(): void
@@ -231,7 +364,7 @@ class UserManagementTest extends TestCase
     public function test_the_last_active_role_manager_cannot_be_deactivated(): void
     {
         $userManager = Role::create(['name' => 'Role Manager']);
-        $userManager->givePermissionTo([Permission::Users->value, Permission::Roles->value]);
+        $userManager->givePermissionTo(array_column(Permission::cases(), 'value'));
 
         $admin = $this->userWithRole('Admin');
         $this->actingAs($roleManager = $this->userWithRole('Role Manager'));
@@ -270,6 +403,7 @@ class UserManagementTest extends TestCase
             ->set('name', 'New Agent')
             ->set('email', 'agent@example.com')
             ->set('role', 'Agent')
+            ->set('departments', [(string) Department::factory()->create()->id])
             ->call('save');
 
         auth()->logout();
@@ -297,6 +431,6 @@ class UserManagementTest extends TestCase
 
     private function userWithRole(string $role): User
     {
-        return User::factory()->create()->assignRole($role);
+        return User::factory()->inDepartment()->create()->assignRole($role);
     }
 }

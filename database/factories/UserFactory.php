@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Department;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -66,5 +67,18 @@ class UserFactory extends Factory
             'two_factor_recovery_codes' => encrypt(json_encode(['recovery-code-1'])),
             'two_factor_confirmed_at' => now(),
         ]);
+    }
+
+    /**
+     * Indicate that the user belongs to the given department, which is also their default.
+     */
+    public function inDepartment(?Department $department = null): static
+    {
+        return $this->afterCreating(function (User $user) use ($department) {
+            $department ??= Department::factory()->create();
+
+            $user->departments()->attach($department);
+            $user->forceFill(['default_department_id' => $department->id])->save();
+        });
     }
 }

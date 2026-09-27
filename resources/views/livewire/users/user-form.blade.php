@@ -17,7 +17,7 @@
 
         <flux:subheading size="lg">
             {{ $this->user
-                ? __('Update the account details and role')
+                ? __('Update the account details, role and departments')
                 : __('The user will receive an email with a link to set their password') }}
         </flux:subheading>
     </div>
@@ -39,6 +39,28 @@
             <flux:input :value="$role !== '' ? $role : __('No role')" :label="__('Role')" disabled
                 :description="__('You cannot change your own role.')" />
         @endif
+
+        <flux:checkbox.group wire:model.live="departments" :label="__('Departments')"
+            :description="__('The user can belong to several departments, and works tickets in each of them.')">
+            @forelse ($this->availableDepartments as $department)
+                <flux:checkbox
+                    :value="$department->id"
+                    :label="$department->name"
+                    :description="$department->is_active ? null : __('Inactive')"
+                    wire:key="department-option-{{ $department->id }}"
+                />
+            @empty
+                <flux:text variant="subtle">{{ __('There are no active departments yet.') }}</flux:text>
+            @endforelse
+        </flux:checkbox.group>
+
+        <flux:select wire:model="defaultDepartment" :label="__('Default department')"
+            :placeholder="$this->chosenDepartments->isEmpty() ? __('Choose departments first...') : __('Choose a default department...')"
+            :disabled="$this->chosenDepartments->isEmpty()" required>
+            @foreach ($this->chosenDepartments as $chosenDepartment)
+                <flux:select.option :value="$chosenDepartment->id" wire:key="default-department-option-{{ $chosenDepartment->id }}">{{ $chosenDepartment->name }}</flux:select.option>
+            @endforeach
+        </flux:select>
 
         <div class="flex items-center gap-4">
             <flux:button variant="primary" type="submit" data-test="save-user-button">
@@ -80,7 +102,7 @@
                     <flux:modal name="confirm-user-deactivation" class="max-w-lg">
                         <div class="space-y-6">
                             <div>
-                                <flux:heading size="lg">{{ __('Deactivate :name?', ['name' => $this->user->name]) }}</flux:heading>
+                                <flux:heading size="lg" class="pe-8">{{ __('Deactivate :name?', ['name' => $this->user->name]) }}</flux:heading>
                                 <flux:subheading>{{ __('You can reactivate the account later.') }}</flux:subheading>
                             </div>
 

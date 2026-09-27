@@ -16,7 +16,7 @@ class RoleSeeder extends Seeder
      * @var array<string, list<Permission>>
      */
     private const DEFAULTS = [
-        'Admin' => [Permission::Users, Permission::Roles],
+        'Admin' => [Permission::Users, Permission::Roles, Permission::Departments, Permission::TicketStatuses, Permission::TicketPriorities],
         'Manager' => [],
         'Agent' => [],
     ];

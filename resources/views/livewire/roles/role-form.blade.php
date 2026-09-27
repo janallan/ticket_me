@@ -63,7 +63,7 @@
             <flux:modal name="confirm-role-deletion" class="max-w-lg">
                 <div class="space-y-6">
                     <div>
-                        <flux:heading size="lg">{{ __('Delete the :name role?', ['name' => $this->role->name]) }}</flux:heading>
+                        <flux:heading size="lg" class="pe-8">{{ __('Delete the :name role?', ['name' => $this->role->name]) }}</flux:heading>
                         <flux:subheading>{{ __('This cannot be undone.') }}</flux:subheading>
                     </div>
 

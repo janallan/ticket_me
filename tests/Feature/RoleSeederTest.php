@@ -25,6 +25,9 @@ class RoleSeederTest extends TestCase
 
         $this->assertTrue($admin->hasPermissionTo(Permission::Users->value));
         $this->assertTrue($admin->hasPermissionTo(Permission::Roles->value));
+        $this->assertTrue($admin->hasPermissionTo(Permission::Departments->value));
+        $this->assertTrue($admin->hasPermissionTo(Permission::TicketStatuses->value));
+        $this->assertTrue($admin->hasPermissionTo(Permission::TicketPriorities->value));
         $this->assertCount(0, Role::findByName('Manager')->permissions);
         $this->assertCount(0, Role::findByName('Agent')->permissions);
     }
@@ -46,8 +49,10 @@ class RoleSeederTest extends TestCase
         $this->seed(DatabaseSeeder::class);
 
         $this->assertDatabaseHas('users', ['email' => 'admin@example.com']);
-        $this->assertTrue(
-            User::where('email', 'admin@example.com')->firstOrFail()->hasRole('Admin'),
-        );
+        $admin = User::where('email', 'admin@example.com')->firstOrFail();
+
+        $this->assertTrue($admin->hasRole('Admin'));
+        $this->assertSame('IT', $admin->defaultDepartment?->name);
+        $this->assertTrue($admin->departments->contains($admin->default_department_id));
     }
 }

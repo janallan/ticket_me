@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Users;
 
+use App\Models\Department;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -18,6 +19,7 @@ use Spatie\Permission\Models\Role;
 /**
  * @property-read LengthAwarePaginator<int, User> $users
  * @property-read Collection<int, Role> $roles
+ * @property-read Collection<int, Department> $departments
  */
 #[Title('Users')]
 class UserList extends Component
@@ -32,6 +34,9 @@ class UserList extends Component
 
     #[Url(except: '')]
     public string $status = '';
+
+    #[Url(except: '')]
+    public string $department = '';
 
     /**
      * Mount the component.
@@ -48,7 +53,7 @@ class UserList extends Component
      */
     public function updated(string $property): void
     {
-        if (in_array($property, ['search', 'role', 'status'], true)) {
+        if (in_array($property, ['search', 'role', 'status', 'department'], true)) {
             $this->resetPage();
         }
     }
@@ -62,7 +67,7 @@ class UserList extends Component
     public function users(): LengthAwarePaginator
     {
         return User::query()
-            ->with('roles')
+            ->with(['roles', 'departments'])
             ->when($this->search !== '', function (Builder $query) {
                 $query->where(fn (Builder $query) => $query
                     ->where('name', 'like', '%'.$this->search.'%')
@@ -71,6 +76,7 @@ class UserList extends Component
             ->when($this->role !== '', fn (Builder $query) => $query->role($this->role))
             ->when($this->status === 'active', fn (Builder $query) => $query->whereNull('deactivated_at'))
             ->when($this->status === 'deactivated', fn (Builder $query) => $query->whereNotNull('deactivated_at'))
+            ->when($this->department !== '', fn (Builder $query) => $query->whereRelation('departments', 'departments.id', $this->department))
             ->orderBy('name')
             ->paginate(15);
     }
@@ -84,6 +90,17 @@ class UserList extends Component
     public function roles(): Collection
     {
         return Role::query()->orderBy('name')->get();
+    }
+
+    /**
+     * Get the departments available for filtering.
+     *
+     * @return Collection<int, Department>
+     */
+    #[Computed]
+    public function departments(): Collection
+    {
+        return Department::query()->orderBy('name')->get();
     }
 
     public function render(): View
