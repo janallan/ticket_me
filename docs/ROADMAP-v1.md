@@ -2,7 +2,7 @@
 
 The first version of the helpdesk: staff open tickets, and the agents in the ticket's department work them. See [ROADMAP.md](ROADMAP.md) for the project conventions and what is already built.
 
-**Status:** built. Everything below is implemented and covered by tests; the manual check under **Verification** is still to do before v1 ships.
+**Status:** shipped on 2026-09-29. Everything below is implemented, covered by tests, passed CI and was checked by hand. What it built is summarised in the **Done** table of [ROADMAP.md](ROADMAP.md).
 
 ---
 
