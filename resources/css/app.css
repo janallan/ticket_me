@@ -61,6 +61,27 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
+/*
+ * Roomier sidebar navigation: taller rows with larger text and icons, so a short menu (for example
+ * only Dashboard and Tickets) doesn't look lost in the sidebar.
+ */
+[data-flux-sidebar] [data-flux-sidebar-item] {
+    @apply h-11 gap-3.5 px-3.5;
+}
+
+[data-flux-sidebar] [data-flux-sidebar-item] [data-content] {
+    @apply text-base;
+}
+
+[data-flux-sidebar] [data-flux-sidebar-item] [data-flux-icon] {
+    @apply size-5;
+}
+
+/* Group headings (the first of two children) line up with the larger rows. */
+[data-flux-sidebar] [data-flux-sidebar-group] > div:first-child:not(:last-child) {
+    @apply px-3.5 pt-3 pb-2;
+}
+
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
