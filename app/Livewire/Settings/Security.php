@@ -5,7 +5,6 @@ namespace App\Livewire\Settings;
 use App\Concerns\PasswordValidationRules;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 use Laravel\Fortify\Features;
@@ -86,7 +85,7 @@ class Security extends Component
             throw $e;
         }
 
-        Auth::user()->update([
+        user()->update([
             'password' => $validated['password'],
         ]);
 

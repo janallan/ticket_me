@@ -25,22 +25,22 @@
     <flux:separator variant="subtle" class="mb-6" />
 
     <form wire:submit="save" class="w-full max-w-lg space-y-6">
-        <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="off" />
+        <flux:input wire:model="userForm.name" :label="__('Name')" type="text" required autofocus autocomplete="off" />
 
-        <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="off" />
+        <flux:input wire:model="userForm.email" :label="__('Email')" type="email" required autocomplete="off" />
 
         @if ($this->canChangeRole)
-            <flux:select wire:model="role" :label="__('Role')" :placeholder="__('Choose a role...')" required>
+            <flux:select wire:model="userForm.role" :label="__('Role')" :placeholder="__('Choose a role...')" required>
                 @foreach ($this->assignableRoles as $roleOption)
                     <flux:select.option :value="$roleOption->name" wire:key="role-option-{{ $roleOption->id }}">{{ $roleOption->name }}</flux:select.option>
                 @endforeach
             </flux:select>
         @else
-            <flux:input :value="$role !== '' ? $role : __('No role')" :label="__('Role')" disabled
+            <flux:input :value="$userForm['role'] !== '' ? $userForm['role'] : __('No role')" :label="__('Role')" disabled
                 :description="__('You cannot change your own role.')" />
         @endif
 
-        <flux:checkbox.group wire:model.live="departments" :label="__('Departments')"
+        <flux:checkbox.group wire:model.live="userForm.departments" :label="__('Departments')"
             :description="__('The user can belong to several departments, and works tickets in each of them.')">
             @forelse ($this->availableDepartments as $department)
                 <flux:checkbox
@@ -54,7 +54,7 @@
             @endforelse
         </flux:checkbox.group>
 
-        <flux:select wire:model="defaultDepartment" :label="__('Default department')"
+        <flux:select wire:model="userForm.defaultDepartment" :label="__('Default department')"
             :placeholder="$this->chosenDepartments->isEmpty() ? __('Choose departments first...') : __('Choose a default department...')"
             :disabled="$this->chosenDepartments->isEmpty()" required>
             @foreach ($this->chosenDepartments as $chosenDepartment)

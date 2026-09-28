@@ -4,6 +4,7 @@ namespace Tests\Feature\TicketSettings;
 
 use App\Enums\Permission;
 use App\Livewire\TicketPriorities\TicketPriorityForm;
+use App\Models\Ticket;
 use App\Models\TicketPriority;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
@@ -48,9 +49,9 @@ class TicketPriorityManagementTest extends TestCase
         $this->actingAs($this->priorityManager());
 
         Livewire::test(TicketPriorityForm::class)
-            ->set('name', 'Critical')
-            ->set('color', 'red')
-            ->set('sortOrder', 50)
+            ->set('ticketPriorityForm.name', 'Critical')
+            ->set('ticketPriorityForm.color', 'red')
+            ->set('ticketPriorityForm.sortOrder', 50)
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('ticket-priorities.index'));
@@ -70,7 +71,7 @@ class TicketPriorityManagementTest extends TestCase
         $high = TicketPriority::factory()->create();
 
         Livewire::test(TicketPriorityForm::class, ['ticketPriority' => $high])
-            ->set('isDefault', true)
+            ->set('ticketPriorityForm.isDefault', true)
             ->call('save')
             ->assertHasNoErrors();
 
@@ -85,9 +86,9 @@ class TicketPriorityManagementTest extends TestCase
         $normal = TicketPriority::factory()->default()->create();
 
         Livewire::test(TicketPriorityForm::class, ['ticketPriority' => $normal])
-            ->set('isDefault', false)
+            ->set('ticketPriorityForm.isDefault', false)
             ->call('save')
-            ->assertHasErrors(['isDefault']);
+            ->assertHasErrors(['ticketPriorityForm.isDefault']);
     }
 
     public function test_a_priority_can_be_deleted_unless_it_is_the_default(): void
@@ -108,6 +109,22 @@ class TicketPriorityManagementTest extends TestCase
             ->assertForbidden();
 
         $this->assertModelExists($normal);
+    }
+
+    public function test_a_priority_used_by_tickets_cannot_be_deleted(): void
+    {
+        $this->actingAs($this->priorityManager());
+
+        $high = TicketPriority::factory()->create();
+        Ticket::factory()->create(['ticket_priority_id' => $high->id]);
+
+        $this->get(route('ticket-priorities.edit', $high))->assertSee(__('Tickets use this priority, so it cannot be deleted.'));
+
+        Livewire::test(TicketPriorityForm::class, ['ticketPriority' => $high])
+            ->call('delete')
+            ->assertForbidden();
+
+        $this->assertModelExists($high);
     }
 
     private function priorityManager(): User

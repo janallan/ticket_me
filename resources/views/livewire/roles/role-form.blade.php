@@ -14,9 +14,9 @@
     <flux:separator variant="subtle" class="mb-6" />
 
     <form wire:submit="save" class="w-full max-w-lg space-y-6">
-        <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus />
+        <flux:input wire:model="roleForm.name" :label="__('Name')" type="text" required autofocus />
 
-        <flux:checkbox.group wire:model="permissions" :label="__('Permissions')">
+        <flux:checkbox.group wire:model="roleForm.permissions" :label="__('Permissions')">
             @foreach (App\Enums\Permission::cases() as $permission)
                 <flux:checkbox
                     :value="$permission->value"

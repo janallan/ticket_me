@@ -45,13 +45,15 @@ class TicketSettingsSeeder extends Seeder
     ];
 
     /**
-     * Seed the default departments, statuses and priorities. Existing records are left
-     * untouched so re-seeding never overwrites changes made from the settings screens.
+     * Seed the default departments, statuses and priorities. Each table is only seeded when it is
+     * empty, so seeding never adds to or changes settings on an existing database.
      */
     public function run(): void
     {
-        foreach (self::DEPARTMENTS as $name => $description) {
-            Department::firstOrCreate(['name' => $name], ['description' => $description]);
+        if (Department::query()->doesntExist()) {
+            foreach (self::DEPARTMENTS as $name => $description) {
+                Department::create(['name' => $name, 'description' => $description]);
+            }
         }
 
         $this->seedOptions(TicketStatus::class, self::STATUSES);
@@ -59,28 +61,27 @@ class TicketSettingsSeeder extends Seeder
     }
 
     /**
-     * Create the missing options, and set the seeded default only when no default exists yet.
+     * Create the options and mark the seeded default, but only when the table is empty.
      *
      * @param  class-string<TicketStatus|TicketPriority>  $model
      * @param  list<array{name: string, color: BadgeColor, is_default?: bool, is_closed?: bool}>  $options
      */
     private function seedOptions(string $model, array $options): void
     {
-        $hasDefault = $model::findDefault() !== null;
+        if ($model::query()->exists()) {
+            return;
+        }
 
         foreach ($options as $index => $option) {
-            $record = $model::firstOrCreate(
-                ['name' => $option['name']],
-                [
-                    'color' => $option['color'],
-                    'sort_order' => ($index + 1) * 10,
-                    ...(isset($option['is_closed']) ? ['is_closed' => $option['is_closed']] : []),
-                ],
-            );
+            $record = $model::create([
+                'name' => $option['name'],
+                'color' => $option['color'],
+                'sort_order' => ($index + 1) * 10,
+                ...(isset($option['is_closed']) ? ['is_closed' => $option['is_closed']] : []),
+            ]);
 
-            if (! $hasDefault && ($option['is_default'] ?? false)) {
+            if ($option['is_default'] ?? false) {
                 $record->makeDefault();
-                $hasDefault = true;
             }
         }
     }

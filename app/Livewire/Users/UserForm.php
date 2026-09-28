@@ -11,7 +11,6 @@ use App\Notifications\SetPasswordNotification;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -35,26 +34,20 @@ class UserForm extends Component
     #[Locked]
     public ?int $userId = null;
 
-    public string $name = '';
-
-    public string $email = '';
-
     /**
-     * The name of the user's role. Each user has exactly one role.
-     */
-    public string $role = '';
-
-    /**
-     * The IDs of the departments the user belongs to. A user can belong to any number of departments.
+     * The form's fields, bound in the view as `userForm.<field>`. `role` is the name of the user's
+     * only role, `departments` holds the IDs of every department the user belongs to, and
+     * `defaultDepartment` must be one of them.
      *
-     * @var list<string>
+     * @var array{name: string, email: string, role: string, departments: list<string>, defaultDepartment: string}
      */
-    public array $departments = [];
-
-    /**
-     * The ID of the user's default department, which must be one of their departments.
-     */
-    public string $defaultDepartment = '';
+    public array $userForm = [
+        'name' => '',
+        'email' => '',
+        'role' => '',
+        'departments' => [],
+        'defaultDepartment' => '',
+    ];
 
     /**
      * Mount the component for creating a new user or editing an existing one.
@@ -65,11 +58,13 @@ class UserForm extends Component
             $this->authorize('update', $user);
 
             $this->userId = $user->id;
-            $this->name = $user->name;
-            $this->email = $user->email;
-            $this->role = $user->assignedRole()->name ?? '';
-            $this->departments = $user->departments()->pluck('departments.id')->map(fn (int $id) => (string) $id)->all();
-            $this->defaultDepartment = (string) $user->default_department_id;
+            $this->userForm = [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->assignedRole()->name ?? '',
+                'departments' => $user->departments()->pluck('departments.id')->map(fn (int $id) => (string) $id)->all(),
+                'defaultDepartment' => (string) $user->default_department_id,
+            ];
 
             return;
         }
@@ -78,17 +73,22 @@ class UserForm extends Component
     }
 
     /**
-     * Keep the default department within the chosen departments, picking the first one when none is set.
+     * Keep the default department within the chosen departments whenever the departments change,
+     * picking the first chosen one when the current default is no longer ticked.
      */
-    public function updatedDepartments(): void
+    public function updatedUserForm(mixed $value, string $key): void
     {
-        if (in_array($this->defaultDepartment, $this->departments, true)) {
+        if (! str_starts_with($key, 'departments')) {
+            return;
+        }
+
+        if (in_array($this->userForm['defaultDepartment'], $this->userForm['departments'], true)) {
             return;
         }
 
         $firstChosen = $this->chosenDepartments->first();
 
-        $this->defaultDepartment = $firstChosen ? (string) $firstChosen->id : '';
+        $this->userForm['defaultDepartment'] = $firstChosen ? (string) $firstChosen->id : '';
     }
 
     /**
@@ -108,7 +108,7 @@ class UserForm extends Component
     #[Computed]
     public function assignableRoles(): Collection
     {
-        $held = $this->actor()->getAllPermissions()->pluck('name');
+        $held = user()->getAllPermissions()->pluck('name');
 
         return Role::query()
             ->with('permissions')
@@ -127,7 +127,7 @@ class UserForm extends Component
     public function availableDepartments(): Collection
     {
         return Department::query()
-            ->where(fn ($query) => $query->active()->orWhereIn('id', $this->departments))
+            ->where(fn ($query) => $query->active()->orWhereIn('id', $this->userForm['departments']))
             ->orderBy('name')
             ->get();
     }
@@ -141,7 +141,7 @@ class UserForm extends Component
     public function chosenDepartments(): Collection
     {
         return $this->availableDepartments
-            ->filter(fn (Department $department) => in_array((string) $department->id, $this->departments, true))
+            ->filter(fn (Department $department) => in_array((string) $department->id, $this->userForm['departments'], true))
             ->values();
     }
 
@@ -151,7 +151,7 @@ class UserForm extends Component
     #[Computed]
     public function canChangeRole(): bool
     {
-        return $this->user === null || $this->actor()->can('changeRole', $this->user);
+        return $this->user === null || user()->can('changeRole', $this->user);
     }
 
     /**
@@ -164,21 +164,28 @@ class UserForm extends Component
         $user ? $this->authorize('update', $user) : $this->authorize('create', User::class);
 
         $changesRole = $user === null
-            || ($this->canChangeRole && $this->role !== ($user->assignedRole()->name ?? ''));
+            || ($this->canChangeRole && $this->userForm['role'] !== ($user->assignedRole()->name ?? ''));
 
         $validated = $this->validate([
-            'name' => $this->nameRules(),
-            'email' => $this->emailRules($this->userId),
-            'role' => $changesRole
+            'userForm.name' => $this->nameRules(),
+            'userForm.email' => $this->emailRules($this->userId),
+            'userForm.role' => $changesRole
                 ? ['required', 'string', Rule::in($this->assignableRoles->pluck('name')->all())]
                 : ['nullable'],
-            'departments' => ['required', 'array', 'min:1'],
-            'departments.*' => ['integer', Rule::exists('departments', 'id')],
-            'defaultDepartment' => ['required', Rule::in($this->departments)],
+            'userForm.departments' => ['required', 'array', 'min:1'],
+            'userForm.departments.*' => ['integer', Rule::exists('departments', 'id')],
+            'userForm.defaultDepartment' => ['required', Rule::in($this->userForm['departments'])],
         ], [
-            'departments.required' => __('Choose at least one department.'),
-            'defaultDepartment.in' => __('The default department must be one of the user\'s departments.'),
-        ]);
+            'userForm.departments.required' => __('Choose at least one department.'),
+            'userForm.defaultDepartment.in' => __('The default department must be one of the user\'s departments.'),
+        ], [
+            'userForm.name' => __('name'),
+            'userForm.email' => __('email'),
+            'userForm.role' => __('role'),
+            'userForm.departments' => __('departments'),
+            'userForm.departments.*' => __('department'),
+            'userForm.defaultDepartment' => __('default department'),
+        ])['userForm'];
 
         if ($user === null) {
             $this->createUser($syncUserDepartments, $validated['name'], $validated['email'], $validated['role'], $validated['departments'], (int) $validated['defaultDepartment']);
@@ -187,7 +194,7 @@ class UserForm extends Component
         }
 
         if ($changesRole) {
-            $ensureRoleManagerRemains->forUser($user, Role::findByName($validated['role']), deactivating: false, errorKey: 'role');
+            $ensureRoleManagerRemains->forUser($user, Role::findByName($validated['role']), deactivating: false, errorKey: 'userForm.role');
         }
 
         DB::transaction(function () use ($user, $validated, $changesRole, $syncUserDepartments) {
@@ -200,7 +207,7 @@ class UserForm extends Component
                 $user->syncRoles([$validated['role']]);
             }
 
-            $syncUserDepartments($user, $validated['departments'], (int) $validated['defaultDepartment']);
+            $syncUserDepartments($user, $validated['departments'], (int) $validated['defaultDepartment'], 'userForm.defaultDepartment');
         });
 
         unset($this->user);
@@ -276,7 +283,7 @@ class UserForm extends Component
             ])->save();
 
             $user->syncRoles([$role]);
-            $syncUserDepartments($user, $departments, $defaultDepartmentId);
+            $syncUserDepartments($user, $departments, $defaultDepartmentId, 'userForm.defaultDepartment');
 
             return $user;
         });
@@ -307,18 +314,6 @@ class UserForm extends Component
         $user = $this->user;
 
         abort_if($user === null, 404);
-
-        return $user;
-    }
-
-    /**
-     * Get the currently authenticated user.
-     */
-    private function actor(): User
-    {
-        $user = Auth::user();
-
-        abort_unless($user instanceof User, 403);
 
         return $user;
     }

@@ -14,14 +14,14 @@
     <flux:separator variant="subtle" class="mb-6" />
 
     <form wire:submit="save" class="w-full max-w-lg space-y-6">
-        <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus />
+        <flux:input wire:model="ticketPriorityForm.name" :label="__('Name')" type="text" required autofocus />
 
-        <x-badge-color-select :color="$color" :name="$name" />
+        <x-badge-color-select form="ticketPriorityForm" :color="$ticketPriorityForm['color']" :name="$ticketPriorityForm['name']" />
 
-        <flux:input wire:model="sortOrder" :label="__('Order')" type="number" min="0" required
+        <flux:input wire:model="ticketPriorityForm.sortOrder" :label="__('Order')" type="number" min="0" required
             :description="__('Lower numbers are listed first.')" />
 
-        <flux:checkbox wire:model="isDefault" :label="__('Default for new tickets')"
+        <flux:checkbox wire:model="ticketPriorityForm.isDefault" :label="__('Default for new tickets')"
             :disabled="$this->priority?->is_default"
             :description="$this->priority?->is_default
                 ? __('This is the default. Make another priority the default to change it.')
@@ -43,7 +43,9 @@
             :heading="__('Delete priority')"
             modal="confirm-ticket-priority-deletion"
             :can-delete="auth()->user()->can('delete', $this->priority)"
-            :blocked-reason="__('The default priority cannot be deleted. Make another priority the default first.')"
+            :blocked-reason="$this->priority->is_default
+                ? __('The default priority cannot be deleted. Make another priority the default first.')
+                : __('Tickets use this priority, so it cannot be deleted.')"
             :confirm-heading="__('Delete the :name priority?', ['name' => $this->priority->name])"
         />
     @endif

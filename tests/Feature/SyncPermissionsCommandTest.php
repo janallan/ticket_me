@@ -36,6 +36,19 @@ class SyncPermissionsCommandTest extends TestCase
         $this->assertDatabaseMissing('permissions', ['name' => 'obsolete']);
     }
 
+    public function test_a_removed_permission_is_also_taken_off_every_role(): void
+    {
+        $this->artisan('app:acl-sync')->assertSuccessful();
+
+        $role = Role::create(['name' => 'Support']);
+        $role->givePermissionTo(PermissionModel::create(['name' => 'obsolete']));
+
+        $this->artisan('app:acl-sync')->assertSuccessful();
+
+        $this->assertDatabaseMissing('permissions', ['name' => 'obsolete']);
+        $this->assertCount(0, $role->fresh()->permissions);
+    }
+
     public function test_it_reports_when_permissions_are_already_in_sync(): void
     {
         $this->artisan('app:acl-sync')->assertSuccessful();

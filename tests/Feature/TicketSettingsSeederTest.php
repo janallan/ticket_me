@@ -42,4 +42,16 @@ class TicketSettingsSeederTest extends TestCase
         $this->assertSame(2, Department::count());
         $this->assertSame(4, TicketStatus::count());
     }
+
+    public function test_each_table_is_only_seeded_when_it_is_empty(): void
+    {
+        Department::factory()->create(['name' => 'Facilities']);
+        TicketStatus::factory()->default()->create(['name' => 'New']);
+
+        $this->seed(TicketSettingsSeeder::class);
+
+        $this->assertSame(['Facilities'], Department::pluck('name')->all());
+        $this->assertSame(['New'], TicketStatus::pluck('name')->all());
+        $this->assertSame(['Low', 'Normal', 'High', 'Urgent'], TicketPriority::query()->ordered()->pluck('name')->all());
+    }
 }

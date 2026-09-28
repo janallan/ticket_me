@@ -4,6 +4,7 @@ namespace Tests\Feature\TicketSettings;
 
 use App\Enums\Permission;
 use App\Livewire\TicketStatuses\TicketStatusForm;
+use App\Models\Ticket;
 use App\Models\TicketStatus;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
@@ -48,8 +49,8 @@ class TicketStatusManagementTest extends TestCase
         $this->actingAs($this->statusManager());
 
         Livewire::test(TicketStatusForm::class)
-            ->set('name', 'Open')
-            ->set('color', 'blue')
+            ->set('ticketStatusForm.name', 'Open')
+            ->set('ticketStatusForm.color', 'blue')
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('ticket-statuses.index'));
@@ -65,7 +66,7 @@ class TicketStatusManagementTest extends TestCase
         $new = TicketStatus::factory()->create();
 
         Livewire::test(TicketStatusForm::class, ['ticketStatus' => $new])
-            ->set('isDefault', true)
+            ->set('ticketStatusForm.isDefault', true)
             ->call('save')
             ->assertHasNoErrors();
 
@@ -80,9 +81,9 @@ class TicketStatusManagementTest extends TestCase
         $open = TicketStatus::factory()->default()->create();
 
         Livewire::test(TicketStatusForm::class, ['ticketStatus' => $open])
-            ->set('isDefault', false)
+            ->set('ticketStatusForm.isDefault', false)
             ->call('save')
-            ->assertHasErrors(['isDefault']);
+            ->assertHasErrors(['ticketStatusForm.isDefault']);
 
         $this->assertTrue($open->refresh()->is_default);
     }
@@ -92,11 +93,11 @@ class TicketStatusManagementTest extends TestCase
         $this->actingAs($this->statusManager());
 
         Livewire::test(TicketStatusForm::class)
-            ->set('name', 'Done')
-            ->set('isDefault', true)
-            ->set('isClosed', true)
+            ->set('ticketStatusForm.name', 'Done')
+            ->set('ticketStatusForm.isDefault', true)
+            ->set('ticketStatusForm.isClosed', true)
             ->call('save')
-            ->assertHasErrors(['isClosed']);
+            ->assertHasErrors(['ticketStatusForm.isClosed']);
     }
 
     public function test_the_color_must_be_a_supported_badge_color(): void
@@ -104,10 +105,10 @@ class TicketStatusManagementTest extends TestCase
         $this->actingAs($this->statusManager());
 
         Livewire::test(TicketStatusForm::class)
-            ->set('name', 'Odd')
-            ->set('color', 'not-a-color')
+            ->set('ticketStatusForm.name', 'Odd')
+            ->set('ticketStatusForm.color', 'not-a-color')
             ->call('save')
-            ->assertHasErrors(['color']);
+            ->assertHasErrors(['ticketStatusForm.color']);
     }
 
     public function test_a_status_can_be_deleted_unless_it_is_the_default(): void
@@ -128,6 +129,22 @@ class TicketStatusManagementTest extends TestCase
             ->assertForbidden();
 
         $this->assertModelExists($open);
+    }
+
+    public function test_a_status_used_by_tickets_cannot_be_deleted(): void
+    {
+        $this->actingAs($this->statusManager());
+
+        $pending = TicketStatus::factory()->create();
+        Ticket::factory()->create(['ticket_status_id' => $pending->id]);
+
+        $this->get(route('ticket-statuses.edit', $pending))->assertSee(__('Tickets use this status, so it cannot be deleted.'));
+
+        Livewire::test(TicketStatusForm::class, ['ticketStatus' => $pending])
+            ->call('delete')
+            ->assertForbidden();
+
+        $this->assertModelExists($pending);
     }
 
     private function statusManager(): User

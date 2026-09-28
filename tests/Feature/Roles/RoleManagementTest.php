@@ -57,8 +57,8 @@ class RoleManagementTest extends TestCase
         $this->actingAs($this->userWithRole('Admin'));
 
         Livewire::test(RoleForm::class)
-            ->set('name', 'Supervisor')
-            ->set('permissions', [Permission::Users->value])
+            ->set('roleForm.name', 'Supervisor')
+            ->set('roleForm.permissions', [Permission::Users->value])
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('roles.index'));
@@ -76,9 +76,9 @@ class RoleManagementTest extends TestCase
         $manager = Role::findByName('Manager');
 
         Livewire::test(RoleForm::class, ['role' => $manager])
-            ->assertSet('name', 'Manager')
-            ->set('name', 'Team Lead')
-            ->set('permissions', [Permission::Users->value])
+            ->assertSet('roleForm.name', 'Manager')
+            ->set('roleForm.name', 'Team Lead')
+            ->set('roleForm.permissions', [Permission::Users->value])
             ->call('save')
             ->assertHasNoErrors();
 
@@ -93,9 +93,9 @@ class RoleManagementTest extends TestCase
         $this->actingAs($this->userWithRole('Admin'));
 
         Livewire::test(RoleForm::class)
-            ->set('name', 'Manager')
+            ->set('roleForm.name', 'Manager')
             ->call('save')
-            ->assertHasErrors(['name' => 'unique']);
+            ->assertHasErrors(['roleForm.name' => 'unique']);
     }
 
     public function test_unknown_permissions_are_rejected(): void
@@ -103,10 +103,10 @@ class RoleManagementTest extends TestCase
         $this->actingAs($this->userWithRole('Admin'));
 
         Livewire::test(RoleForm::class)
-            ->set('name', 'Supervisor')
-            ->set('permissions', ['not-a-permission'])
+            ->set('roleForm.name', 'Supervisor')
+            ->set('roleForm.permissions', ['not-a-permission'])
             ->call('save')
-            ->assertHasErrors(['permissions.0']);
+            ->assertHasErrors(['roleForm.permissions.0']);
     }
 
     public function test_role_managers_can_grant_permissions_they_do_not_hold(): void
@@ -117,7 +117,7 @@ class RoleManagementTest extends TestCase
         $this->actingAs($this->userWithRole('Role Manager'));
 
         Livewire::test(RoleForm::class, ['role' => $roleManager])
-            ->set('permissions', [Permission::Users->value, Permission::Roles->value])
+            ->set('roleForm.permissions', [Permission::Users->value, Permission::Roles->value])
             ->call('save')
             ->assertHasNoErrors();
 
@@ -138,7 +138,7 @@ class RoleManagementTest extends TestCase
         $supervisor->givePermissionTo(Permission::Users->value);
 
         Livewire::test(RoleForm::class, ['role' => $supervisor])
-            ->set('permissions', [])
+            ->set('roleForm.permissions', [])
             ->call('save')
             ->assertHasNoErrors();
 
@@ -150,9 +150,9 @@ class RoleManagementTest extends TestCase
         $this->actingAs($this->userWithRole('Admin'));
 
         Livewire::test(RoleForm::class, ['role' => Role::findByName('Admin')])
-            ->set('permissions', [Permission::Users->value])
+            ->set('roleForm.permissions', [Permission::Users->value])
             ->call('save')
-            ->assertHasErrors(['permissions']);
+            ->assertHasErrors(['roleForm.permissions']);
 
         $this->assertTrue(Role::findByName('Admin')->hasPermissionTo(Permission::Roles->value));
     }
@@ -166,7 +166,7 @@ class RoleManagementTest extends TestCase
         $this->actingAs($this->userWithRole('Admin'));
 
         Livewire::test(RoleForm::class, ['role' => Role::findByName('Admin')])
-            ->set('permissions', [Permission::Users->value])
+            ->set('roleForm.permissions', [Permission::Users->value])
             ->call('save')
             ->assertHasNoErrors();
 

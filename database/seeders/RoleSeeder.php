@@ -10,28 +10,37 @@ use Spatie\Permission\PermissionRegistrar;
 class RoleSeeder extends Seeder
 {
     /**
-     * The default roles and their permissions. Roles are only created when missing,
-     * so re-seeding never overwrites changes made from the Roles screen.
+     * The default roles and their permissions.
      *
      * @var array<string, list<Permission>>
      */
     private const DEFAULTS = [
-        'Admin' => [Permission::Users, Permission::Roles, Permission::Departments, Permission::TicketStatuses, Permission::TicketPriorities],
-        'Manager' => [],
-        'Agent' => [],
+        'Admin' => [
+            Permission::Users,
+            Permission::Roles,
+            Permission::Tickets,
+            Permission::TicketsAll,
+            Permission::Departments,
+            Permission::TicketStatuses,
+            Permission::TicketPriorities,
+        ],
+        'Manager' => [Permission::Tickets, Permission::TicketsAll],
+        'Agent' => [Permission::Tickets],
     ];
 
     /**
-     * Seed the default roles.
+     * Create the default roles, but only when the roles table is empty, so seeding never changes
+     * roles on an existing database.
      */
     public function run(): void
     {
-        foreach (self::DEFAULTS as $name => $permissions) {
-            $role = Role::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+        if (Role::query()->exists()) {
+            return;
+        }
 
-            if ($role->wasRecentlyCreated) {
-                $role->syncPermissions(array_column($permissions, 'value'));
-            }
+        foreach (self::DEFAULTS as $name => $permissions) {
+            Role::create(['name' => $name, 'guard_name' => 'web'])
+                ->syncPermissions(array_column($permissions, 'value'));
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();

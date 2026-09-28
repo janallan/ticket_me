@@ -20,14 +20,15 @@ class RoleForm extends Component
     #[Locked]
     public ?int $roleId = null;
 
-    public string $name = '';
-
     /**
-     * The names of the permissions selected for the role.
+     * The form's fields, bound in the view as `roleForm.<field>`.
      *
-     * @var list<string>
+     * @var array{name: string, permissions: list<string>}
      */
-    public array $permissions = [];
+    public array $roleForm = [
+        'name' => '',
+        'permissions' => [],
+    ];
 
     /**
      * Mount the component for creating a new role or editing an existing one.
@@ -38,8 +39,10 @@ class RoleForm extends Component
             $this->authorize('update', $role);
 
             $this->roleId = $role->id;
-            $this->name = $role->name;
-            $this->permissions = $role->permissions->pluck('name')->values()->all();
+            $this->roleForm = [
+                'name' => $role->name,
+                'permissions' => $role->permissions->pluck('name')->values()->all(),
+            ];
 
             return;
         }
@@ -66,20 +69,24 @@ class RoleForm extends Component
         $role ? $this->authorize('update', $role) : $this->authorize('create', Role::class);
 
         $validated = $this->validate([
-            'name' => [
+            'roleForm.name' => [
                 'required',
                 'string',
                 'max:255',
                 Rule::unique('roles', 'name')->where('guard_name', 'web')->ignore($this->roleId),
             ],
-            'permissions' => ['array'],
-            'permissions.*' => [Rule::enum(Permission::class)],
-        ]);
+            'roleForm.permissions' => ['array'],
+            'roleForm.permissions.*' => [Rule::enum(Permission::class)],
+        ], attributes: [
+            'roleForm.name' => __('name'),
+            'roleForm.permissions' => __('permissions'),
+            'roleForm.permissions.*' => __('permission'),
+        ])['roleForm'];
 
         $permissions = array_values(array_unique($validated['permissions'] ?? []));
 
         if ($role) {
-            $ensureRoleManagerRemains->forRole($role, $permissions);
+            $ensureRoleManagerRemains->forRole($role, $permissions, 'roleForm.permissions');
         }
 
         $role ??= new Role(['guard_name' => 'web']);

@@ -30,12 +30,12 @@ class PermissionSeederTest extends TestCase
         $this->assertSame(count(Permission::cases()), PermissionModel::count());
     }
 
-    public function test_it_removes_permissions_that_are_no_longer_in_the_enum(): void
+    public function test_it_leaves_an_existing_permissions_table_alone(): void
     {
         PermissionModel::create(['name' => 'obsolete']);
 
         $this->seed(PermissionSeeder::class);
 
-        $this->assertDatabaseMissing('permissions', ['name' => 'obsolete']);
+        $this->assertSame(['obsolete'], PermissionModel::pluck('name')->all());
     }
 }

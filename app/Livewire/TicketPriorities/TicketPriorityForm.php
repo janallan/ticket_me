@@ -20,13 +20,17 @@ class TicketPriorityForm extends Component
     #[Locked]
     public ?int $priorityId = null;
 
-    public string $name = '';
-
-    public string $color = 'zinc';
-
-    public bool $isDefault = false;
-
-    public int $sortOrder = 0;
+    /**
+     * The form's fields, bound in the view as `ticketPriorityForm.<field>`.
+     *
+     * @var array{name: string, color: string, isDefault: bool, sortOrder: int|string}
+     */
+    public array $ticketPriorityForm = [
+        'name' => '',
+        'color' => 'zinc',
+        'isDefault' => false,
+        'sortOrder' => 0,
+    ];
 
     /**
      * Mount the component for creating a new priority or editing an existing one.
@@ -37,17 +41,19 @@ class TicketPriorityForm extends Component
             $this->authorize('update', $ticketPriority);
 
             $this->priorityId = $ticketPriority->id;
-            $this->name = $ticketPriority->name;
-            $this->color = $ticketPriority->color->value;
-            $this->isDefault = $ticketPriority->is_default;
-            $this->sortOrder = $ticketPriority->sort_order;
+            $this->ticketPriorityForm = [
+                'name' => $ticketPriority->name,
+                'color' => $ticketPriority->color->value,
+                'isDefault' => $ticketPriority->is_default,
+                'sortOrder' => $ticketPriority->sort_order,
+            ];
 
             return;
         }
 
         $this->authorize('create', TicketPriority::class);
 
-        $this->sortOrder = (int) TicketPriority::max('sort_order') + 10;
+        $this->ticketPriorityForm['sortOrder'] = (int) TicketPriority::max('sort_order') + 10;
     }
 
     /**
@@ -69,15 +75,20 @@ class TicketPriorityForm extends Component
         $priority ? $this->authorize('update', $priority) : $this->authorize('create', TicketPriority::class);
 
         $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('ticket_priorities', 'name')->ignore($this->priorityId)],
-            'color' => ['required', Rule::enum(BadgeColor::class)],
-            'isDefault' => ['boolean'],
-            'sortOrder' => ['required', 'integer', 'min:0', 'max:65535'],
-        ]);
+            'ticketPriorityForm.name' => ['required', 'string', 'max:255', Rule::unique('ticket_priorities', 'name')->ignore($this->priorityId)],
+            'ticketPriorityForm.color' => ['required', Rule::enum(BadgeColor::class)],
+            'ticketPriorityForm.isDefault' => ['boolean'],
+            'ticketPriorityForm.sortOrder' => ['required', 'integer', 'min:0', 'max:65535'],
+        ], attributes: [
+            'ticketPriorityForm.name' => __('name'),
+            'ticketPriorityForm.color' => __('color'),
+            'ticketPriorityForm.isDefault' => __('default'),
+            'ticketPriorityForm.sortOrder' => __('order'),
+        ])['ticketPriorityForm'];
 
         if ($priority?->is_default && ! $validated['isDefault']) {
             throw ValidationException::withMessages([
-                'isDefault' => __('Make another priority the default instead.'),
+                'ticketPriorityForm.isDefault' => __('Make another priority the default instead.'),
             ]);
         }
 

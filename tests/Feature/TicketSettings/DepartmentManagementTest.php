@@ -5,6 +5,7 @@ namespace Tests\Feature\TicketSettings;
 use App\Enums\Permission;
 use App\Livewire\Departments\DepartmentForm;
 use App\Models\Department;
+use App\Models\Ticket;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -63,8 +64,8 @@ class DepartmentManagementTest extends TestCase
         $this->actingAs($this->departmentManager());
 
         Livewire::test(DepartmentForm::class)
-            ->set('name', 'Facilities')
-            ->set('description', 'Buildings and equipment')
+            ->set('departmentForm.name', 'Facilities')
+            ->set('departmentForm.description', 'Buildings and equipment')
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('departments.index'));
@@ -85,8 +86,8 @@ class DepartmentManagementTest extends TestCase
         $department->users()->attach($member);
 
         Livewire::test(DepartmentForm::class, ['department' => $department])
-            ->set('name', 'Renamed')
-            ->set('isActive', false)
+            ->set('departmentForm.name', 'Renamed')
+            ->set('departmentForm.isActive', false)
             ->call('save')
             ->assertHasNoErrors();
 
@@ -104,9 +105,9 @@ class DepartmentManagementTest extends TestCase
         Department::factory()->create(['name' => 'IT']);
 
         Livewire::test(DepartmentForm::class)
-            ->set('name', 'IT')
+            ->set('departmentForm.name', 'IT')
             ->call('save')
-            ->assertHasErrors(['name' => 'unique']);
+            ->assertHasErrors(['departmentForm.name' => 'unique']);
     }
 
     public function test_a_department_can_be_deleted(): void
@@ -122,6 +123,22 @@ class DepartmentManagementTest extends TestCase
 
         $this->assertModelMissing($department);
         $this->assertDatabaseCount('department_user', 0);
+    }
+
+    public function test_a_department_with_tickets_cannot_be_deleted(): void
+    {
+        $this->actingAs($this->departmentManager());
+
+        $department = Department::factory()->create();
+        Ticket::factory()->create(['department_id' => $department->id]);
+
+        $this->get(route('departments.edit', $department))->assertSee(__('This department has tickets, so it cannot be deleted. Mark it inactive to stop new tickets instead.'));
+
+        Livewire::test(DepartmentForm::class, ['department' => $department])
+            ->call('delete')
+            ->assertForbidden();
+
+        $this->assertModelExists($department);
     }
 
     private function departmentManager(): User

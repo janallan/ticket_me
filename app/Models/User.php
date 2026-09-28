@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Permission;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -75,6 +77,80 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function defaultDepartment(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'default_department_id');
+    }
+
+    /**
+     * Get the tickets the user opened.
+     *
+     * @return HasMany<Ticket, $this>
+     */
+    public function requestedTickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'requester_id');
+    }
+
+    /**
+     * Get the tickets assigned to the user.
+     *
+     * @return HasMany<Ticket, $this>
+     */
+    public function assignedTickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'assignee_id');
+    }
+
+    /**
+     * Determine whether the user works tickets at all, in their departments or everywhere.
+     */
+    public function canWorkTickets(): bool
+    {
+        return $this->can(Permission::Tickets->value) || $this->can(Permission::TicketsAll->value);
+    }
+
+    /**
+     * Determine whether the user can work tickets in the department: with `tickets-all`,
+     * or with `tickets` and membership of the department.
+     */
+    public function worksTicketsIn(Department $department): bool
+    {
+        if ($this->can(Permission::TicketsAll->value)) {
+            return true;
+        }
+
+        return $this->can(Permission::Tickets->value)
+            && $this->departments()->whereKey($department->id)->exists();
+    }
+
+    /**
+     * Scope a query to the users who can work tickets in the department.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function worksTicketsInDepartment(Builder $query, Department $department): void
+    {
+        $query->where(fn (Builder $query) => $query
+            ->holdingPermission(Permission::TicketsAll)
+            ->orWhere(fn (Builder $query) => $query
+                ->holdingPermission(Permission::Tickets)
+                ->whereHas('departments', fn (Builder $departments) => $departments->whereKey($department->id))));
+    }
+
+    /**
+     * Scope a query to the users granted the permission directly or through a role. Unlike
+     * spatie's `permission()` scope, this matches nobody instead of throwing when the permission
+     * has not been synced to the database yet.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function holdingPermission(Builder $query, Permission $permission): void
+    {
+        $named = fn (Builder $permissions) => $permissions->where('name', $permission->value);
+
+        $query->where(fn (Builder $query) => $query
+            ->whereHas('permissions', $named)
+            ->orWhereHas('roles.permissions', $named));
     }
 
     /**

@@ -33,10 +33,10 @@ class DepartmentPolicy
     }
 
     /**
-     * Determine whether the user can delete the department.
+     * Determine whether the user can delete the department. Departments with tickets cannot be deleted.
      */
     public function delete(User $user, Department $department): bool
     {
-        return $user->can(Permission::Departments->value);
+        return $user->can(Permission::Departments->value) && $department->tickets()->doesntExist();
     }
 }

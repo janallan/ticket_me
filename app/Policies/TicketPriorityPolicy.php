@@ -33,10 +33,12 @@ class TicketPriorityPolicy
     }
 
     /**
-     * Determine whether the user can delete the priority. The default priority cannot be deleted.
+     * Determine whether the user can delete the priority. The default priority and priorities in use cannot be deleted.
      */
     public function delete(User $user, TicketPriority $ticketPriority): bool
     {
-        return $user->can(Permission::TicketPriorities->value) && ! $ticketPriority->is_default;
+        return $user->can(Permission::TicketPriorities->value)
+            && ! $ticketPriority->is_default
+            && $ticketPriority->tickets()->doesntExist();
     }
 }

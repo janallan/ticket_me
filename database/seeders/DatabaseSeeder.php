@@ -7,13 +7,15 @@ use App\Models\Department;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
     /**
-     * Seed the application's database.
+     * Seed the application's database. Every seeder only fills tables that are empty, and the admin
+     * account is only created when there are no users yet.
      */
     public function run(): void
     {
@@ -23,28 +25,26 @@ class DatabaseSeeder extends Seeder
             TicketSettingsSeeder::class,
         ]);
 
-        $admin = User::firstOrNew(['email' => 'admin@example.com']);
-
-        if (! $admin->exists) {
-            $admin->forceFill([
-                'name' => 'Admin',
-                'password' => 'password',
-                'email_verified_at' => now(),
-            ])->save();
+        if (User::query()->exists()) {
+            return;
         }
 
-        if ($admin->roles()->doesntExist()) {
+        $admin = new User;
+        $admin->forceFill([
+            'name' => 'Admin',
+            'email' => 'admin@example.com',
+            'password' => 'password',
+            'email_verified_at' => now(),
+        ])->save();
+
+        if (Role::query()->where('name', 'Admin')->exists()) {
             $admin->assignRole('Admin');
         }
 
-        if ($admin->default_department_id === null) {
-            $department = Department::where('name', 'IT')->firstOrFail();
+        $department = Department::where('name', 'IT')->first() ?? Department::query()->orderBy('name')->first();
 
-            app(SyncUserDepartments::class)(
-                $admin,
-                [...$admin->departments()->pluck('departments.id')->all(), $department->id],
-                $department->id,
-            );
+        if ($department !== null) {
+            app(SyncUserDepartments::class)($admin, [$department->id], $department->id);
         }
     }
 }

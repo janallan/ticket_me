@@ -20,15 +20,18 @@ class TicketStatusForm extends Component
     #[Locked]
     public ?int $statusId = null;
 
-    public string $name = '';
-
-    public string $color = 'zinc';
-
-    public bool $isDefault = false;
-
-    public bool $isClosed = false;
-
-    public int $sortOrder = 0;
+    /**
+     * The form's fields, bound in the view as `ticketStatusForm.<field>`.
+     *
+     * @var array{name: string, color: string, isDefault: bool, isClosed: bool, sortOrder: int|string}
+     */
+    public array $ticketStatusForm = [
+        'name' => '',
+        'color' => 'zinc',
+        'isDefault' => false,
+        'isClosed' => false,
+        'sortOrder' => 0,
+    ];
 
     /**
      * Mount the component for creating a new status or editing an existing one.
@@ -39,18 +42,20 @@ class TicketStatusForm extends Component
             $this->authorize('update', $ticketStatus);
 
             $this->statusId = $ticketStatus->id;
-            $this->name = $ticketStatus->name;
-            $this->color = $ticketStatus->color->value;
-            $this->isDefault = $ticketStatus->is_default;
-            $this->isClosed = $ticketStatus->is_closed;
-            $this->sortOrder = $ticketStatus->sort_order;
+            $this->ticketStatusForm = [
+                'name' => $ticketStatus->name,
+                'color' => $ticketStatus->color->value,
+                'isDefault' => $ticketStatus->is_default,
+                'isClosed' => $ticketStatus->is_closed,
+                'sortOrder' => $ticketStatus->sort_order,
+            ];
 
             return;
         }
 
         $this->authorize('create', TicketStatus::class);
 
-        $this->sortOrder = (int) TicketStatus::max('sort_order') + 10;
+        $this->ticketStatusForm['sortOrder'] = (int) TicketStatus::max('sort_order') + 10;
     }
 
     /**
@@ -72,22 +77,28 @@ class TicketStatusForm extends Component
         $status ? $this->authorize('update', $status) : $this->authorize('create', TicketStatus::class);
 
         $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('ticket_statuses', 'name')->ignore($this->statusId)],
-            'color' => ['required', Rule::enum(BadgeColor::class)],
-            'isDefault' => ['boolean'],
-            'isClosed' => ['boolean'],
-            'sortOrder' => ['required', 'integer', 'min:0', 'max:65535'],
-        ]);
+            'ticketStatusForm.name' => ['required', 'string', 'max:255', Rule::unique('ticket_statuses', 'name')->ignore($this->statusId)],
+            'ticketStatusForm.color' => ['required', Rule::enum(BadgeColor::class)],
+            'ticketStatusForm.isDefault' => ['boolean'],
+            'ticketStatusForm.isClosed' => ['boolean'],
+            'ticketStatusForm.sortOrder' => ['required', 'integer', 'min:0', 'max:65535'],
+        ], attributes: [
+            'ticketStatusForm.name' => __('name'),
+            'ticketStatusForm.color' => __('color'),
+            'ticketStatusForm.isDefault' => __('default'),
+            'ticketStatusForm.isClosed' => __('counts as closed'),
+            'ticketStatusForm.sortOrder' => __('order'),
+        ])['ticketStatusForm'];
 
         if ($status?->is_default && ! $validated['isDefault']) {
             throw ValidationException::withMessages([
-                'isDefault' => __('Make another status the default instead.'),
+                'ticketStatusForm.isDefault' => __('Make another status the default instead.'),
             ]);
         }
 
         if ($validated['isDefault'] && $validated['isClosed']) {
             throw ValidationException::withMessages([
-                'isClosed' => __('The default status for new tickets cannot count as closed.'),
+                'ticketStatusForm.isClosed' => __('The default status for new tickets cannot count as closed.'),
             ]);
         }
 

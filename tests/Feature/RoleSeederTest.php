@@ -23,13 +23,9 @@ class RoleSeederTest extends TestCase
 
         $admin = Role::findByName('Admin');
 
-        $this->assertTrue($admin->hasPermissionTo(Permission::Users->value));
-        $this->assertTrue($admin->hasPermissionTo(Permission::Roles->value));
-        $this->assertTrue($admin->hasPermissionTo(Permission::Departments->value));
-        $this->assertTrue($admin->hasPermissionTo(Permission::TicketStatuses->value));
-        $this->assertTrue($admin->hasPermissionTo(Permission::TicketPriorities->value));
-        $this->assertCount(0, Role::findByName('Manager')->permissions);
-        $this->assertCount(0, Role::findByName('Agent')->permissions);
+        $this->assertEqualsCanonicalizing(array_column(Permission::cases(), 'value'), $admin->permissions->pluck('name')->all());
+        $this->assertEqualsCanonicalizing([Permission::Tickets->value, Permission::TicketsAll->value], Role::findByName('Manager')->permissions->pluck('name')->all());
+        $this->assertSame([Permission::Tickets->value], Role::findByName('Agent')->permissions->pluck('name')->all());
     }
 
     public function test_reseeding_keeps_customized_roles(): void
@@ -42,6 +38,26 @@ class RoleSeederTest extends TestCase
 
         $this->assertTrue(Role::findByName('Manager')->hasPermissionTo(Permission::Users->value));
         $this->assertSame(3, Role::count());
+    }
+
+    public function test_no_default_roles_are_created_when_any_role_exists(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        Role::create(['name' => 'Support']);
+
+        $this->seed(RoleSeeder::class);
+
+        $this->assertSame(['Support'], Role::pluck('name')->all());
+    }
+
+    public function test_the_admin_account_is_only_created_when_there_are_no_users(): void
+    {
+        User::factory()->create(['email' => 'someone@example.com']);
+
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertDatabaseMissing('users', ['email' => 'admin@example.com']);
+        $this->assertSame(1, User::count());
     }
 
     public function test_the_default_admin_user_is_given_the_admin_role(): void

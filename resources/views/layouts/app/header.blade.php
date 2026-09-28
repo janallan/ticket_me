@@ -14,6 +14,12 @@
                     {{ __('Dashboard') }}
                 </flux:navbar.item>
 
+                @can('viewAny', App\Models\Ticket::class)
+                    <flux:navbar.item icon="inbox" :href="route('tickets.index')" :current="request()->routeIs('tickets.*')" wire:navigate>
+                        {{ __('Tickets') }}
+                    </flux:navbar.item>
+                @endcan
+
                 @can('viewAny', App\Models\User::class)
                     <flux:navbar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
                         {{ __('Users') }}
@@ -73,6 +79,12 @@
                     <flux:sidebar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard')  }}
                     </flux:sidebar.item>
+
+                    @can('viewAny', App\Models\Ticket::class)
+                        <flux:sidebar.item icon="inbox" :href="route('tickets.index')" :current="request()->routeIs('tickets.*')" wire:navigate>
+                            {{ __('Tickets') }}
+                        </flux:sidebar.item>
+                    @endcan
                 </flux:sidebar.group>
 
                 @include('partials.admin-nav')

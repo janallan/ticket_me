@@ -8,6 +8,7 @@ use Database\Factories\TicketStatusFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -39,5 +40,15 @@ class TicketStatus extends Model
             'is_closed' => 'boolean',
             'sort_order' => 'integer',
         ];
+    }
+
+    /**
+     * Get the tickets in this status.
+     *
+     * @return HasMany<Ticket, $this>
+     */
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(Ticket::class, 'ticket_status_id');
     }
 }

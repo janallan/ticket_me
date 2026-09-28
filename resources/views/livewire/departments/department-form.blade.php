@@ -14,11 +14,11 @@
     <flux:separator variant="subtle" class="mb-6" />
 
     <form wire:submit="save" class="w-full max-w-lg space-y-6">
-        <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus />
+        <flux:input wire:model="departmentForm.name" :label="__('Name')" type="text" required autofocus />
 
-        <flux:textarea wire:model="description" :label="__('Description')" rows="3" />
+        <flux:textarea wire:model="departmentForm.description" :label="__('Description')" rows="3" />
 
-        <flux:switch wire:model="isActive" :label="__('Active')"
+        <flux:switch wire:model="departmentForm.isActive" :label="__('Active')"
             :description="__('Inactive departments can no longer receive new tickets.')" />
 
         @if ($this->department)
@@ -55,6 +55,7 @@
             :heading="__('Delete department')"
             modal="confirm-department-deletion"
             :can-delete="auth()->user()->can('delete', $this->department)"
+            :blocked-reason="__('This department has tickets, so it cannot be deleted. Mark it inactive to stop new tickets instead.')"
             :confirm-heading="__('Delete the :name department?', ['name' => $this->department->name])"
             :confirm-description="__('To keep its history but stop new tickets, mark it inactive instead.')"
         />

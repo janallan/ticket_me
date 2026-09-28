@@ -92,10 +92,10 @@ class UserManagementTest extends TestCase
         $department = Department::factory()->create();
 
         Livewire::test(UserForm::class)
-            ->set('name', 'New Agent')
-            ->set('email', 'agent@example.com')
-            ->set('role', 'Agent')
-            ->set('departments', [(string) $department->id])
+            ->set('userForm.name', 'New Agent')
+            ->set('userForm.email', 'agent@example.com')
+            ->set('userForm.role', 'Agent')
+            ->set('userForm.departments', [(string) $department->id])
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('users.index'));
@@ -115,15 +115,16 @@ class UserManagementTest extends TestCase
 
         $this->actingAs($this->userWithRole('Admin'));
 
-        [$hr, $it] = Department::factory()->count(2)->create();
+        $hr = Department::factory()->create(['name' => 'HR']);
+        $it = Department::factory()->create(['name' => 'IT']);
 
         Livewire::test(UserForm::class)
-            ->set('name', 'New Agent')
-            ->set('email', 'agent@example.com')
-            ->set('role', 'Agent')
-            ->set('departments', [(string) $hr->id, (string) $it->id])
-            ->assertSet('defaultDepartment', (string) $hr->id)
-            ->set('defaultDepartment', (string) $it->id)
+            ->set('userForm.name', 'New Agent')
+            ->set('userForm.email', 'agent@example.com')
+            ->set('userForm.role', 'Agent')
+            ->set('userForm.departments', [(string) $hr->id, (string) $it->id])
+            ->assertSet('userForm.defaultDepartment', (string) $hr->id)
+            ->set('userForm.defaultDepartment', (string) $it->id)
             ->call('save')
             ->assertHasNoErrors();
 
@@ -137,16 +138,18 @@ class UserManagementTest extends TestCase
     {
         $this->actingAs($this->userWithRole('Admin'));
 
-        [$hr, $it, $facilities] = Department::factory()->count(3)->create();
+        $hr = Department::factory()->create(['name' => 'HR']);
+        $it = Department::factory()->create(['name' => 'IT']);
+        $facilities = Department::factory()->create(['name' => 'Workplace']);
 
         $user = User::factory()->inDepartment($hr)->create()->assignRole('Agent');
         $user->departments()->attach($it);
 
         Livewire::test(UserForm::class, ['user' => $user])
-            ->assertSet('departments', [(string) $hr->id, (string) $it->id])
-            ->assertSet('defaultDepartment', (string) $hr->id)
-            ->set('departments', [(string) $it->id, (string) $facilities->id])
-            ->assertSet('defaultDepartment', (string) $it->id)
+            ->assertSet('userForm.departments', [(string) $hr->id, (string) $it->id])
+            ->assertSet('userForm.defaultDepartment', (string) $hr->id)
+            ->set('userForm.departments', [(string) $it->id, (string) $facilities->id])
+            ->assertSet('userForm.defaultDepartment', (string) $it->id)
             ->call('save')
             ->assertHasNoErrors();
 
@@ -161,11 +164,11 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->userWithRole('Admin'));
 
         Livewire::test(UserForm::class)
-            ->set('name', 'New Agent')
-            ->set('email', 'agent@example.com')
-            ->set('role', 'Agent')
+            ->set('userForm.name', 'New Agent')
+            ->set('userForm.email', 'agent@example.com')
+            ->set('userForm.role', 'Agent')
             ->call('save')
-            ->assertHasErrors(['departments' => 'required', 'defaultDepartment' => 'required']);
+            ->assertHasErrors(['userForm.departments' => 'required', 'userForm.defaultDepartment' => 'required']);
 
         $this->assertDatabaseMissing('users', ['email' => 'agent@example.com']);
     }
@@ -177,13 +180,13 @@ class UserManagementTest extends TestCase
         [$hr, $it] = Department::factory()->count(2)->create();
 
         Livewire::test(UserForm::class)
-            ->set('name', 'New Agent')
-            ->set('email', 'agent@example.com')
-            ->set('role', 'Agent')
-            ->set('departments', [(string) $hr->id])
-            ->set('defaultDepartment', (string) $it->id)
+            ->set('userForm.name', 'New Agent')
+            ->set('userForm.email', 'agent@example.com')
+            ->set('userForm.role', 'Agent')
+            ->set('userForm.departments', [(string) $hr->id])
+            ->set('userForm.defaultDepartment', (string) $it->id)
             ->call('save')
-            ->assertHasErrors(['defaultDepartment' => 'in']);
+            ->assertHasErrors(['userForm.defaultDepartment' => 'in']);
 
         $this->assertDatabaseMissing('users', ['email' => 'agent@example.com']);
     }
@@ -241,10 +244,10 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->userWithRole('Admin'));
 
         Livewire::test(UserForm::class)
-            ->set('name', 'New Agent')
-            ->set('email', 'agent@example.com')
+            ->set('userForm.name', 'New Agent')
+            ->set('userForm.email', 'agent@example.com')
             ->call('save')
-            ->assertHasErrors(['role' => 'required']);
+            ->assertHasErrors(['userForm.role' => 'required']);
     }
 
     public function test_emails_must_be_unique(): void
@@ -252,11 +255,11 @@ class UserManagementTest extends TestCase
         $this->actingAs($admin = $this->userWithRole('Admin'));
 
         Livewire::test(UserForm::class)
-            ->set('name', 'Duplicate')
-            ->set('email', $admin->email)
-            ->set('role', 'Agent')
+            ->set('userForm.name', 'Duplicate')
+            ->set('userForm.email', $admin->email)
+            ->set('userForm.role', 'Agent')
             ->call('save')
-            ->assertHasErrors(['email' => 'unique']);
+            ->assertHasErrors(['userForm.email' => 'unique']);
     }
 
     public function test_changing_the_role_replaces_the_previous_one(): void
@@ -266,9 +269,9 @@ class UserManagementTest extends TestCase
         $user = $this->userWithRole('Agent');
 
         Livewire::test(UserForm::class, ['user' => $user])
-            ->assertSet('role', 'Agent')
-            ->set('name', 'Renamed')
-            ->set('role', 'Manager')
+            ->assertSet('userForm.role', 'Agent')
+            ->set('userForm.name', 'Renamed')
+            ->set('userForm.role', 'Manager')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -286,11 +289,11 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->userWithRole('User Manager'));
 
         Livewire::test(UserForm::class)
-            ->set('name', 'Sneaky')
-            ->set('email', 'sneaky@example.com')
-            ->set('role', 'Admin')
+            ->set('userForm.name', 'Sneaky')
+            ->set('userForm.email', 'sneaky@example.com')
+            ->set('userForm.role', 'Admin')
             ->call('save')
-            ->assertHasErrors(['role' => 'in']);
+            ->assertHasErrors(['userForm.role' => 'in']);
 
         $this->assertDatabaseMissing('users', ['email' => 'sneaky@example.com']);
     }
@@ -310,7 +313,7 @@ class UserManagementTest extends TestCase
         $this->actingAs($admin = $this->userWithRole('Admin'));
 
         Livewire::test(UserForm::class, ['user' => $admin])
-            ->set('role', 'Agent')
+            ->set('userForm.role', 'Agent')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -324,7 +327,7 @@ class UserManagementTest extends TestCase
         $otherAdmin = $this->userWithRole('Admin');
 
         Livewire::test(UserForm::class, ['user' => $otherAdmin])
-            ->set('role', 'Agent')
+            ->set('userForm.role', 'Agent')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -400,10 +403,10 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->userWithRole('Admin'));
 
         Livewire::test(UserForm::class)
-            ->set('name', 'New Agent')
-            ->set('email', 'agent@example.com')
-            ->set('role', 'Agent')
-            ->set('departments', [(string) Department::factory()->create()->id])
+            ->set('userForm.name', 'New Agent')
+            ->set('userForm.email', 'agent@example.com')
+            ->set('userForm.role', 'Agent')
+            ->set('userForm.departments', [(string) Department::factory()->create()->id])
             ->call('save');
 
         auth()->logout();

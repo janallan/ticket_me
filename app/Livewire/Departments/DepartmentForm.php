@@ -17,11 +17,16 @@ class DepartmentForm extends Component
     #[Locked]
     public ?int $departmentId = null;
 
-    public string $name = '';
-
-    public string $description = '';
-
-    public bool $isActive = true;
+    /**
+     * The form's fields, bound in the view as `departmentForm.<field>`.
+     *
+     * @var array{name: string, description: string, isActive: bool}
+     */
+    public array $departmentForm = [
+        'name' => '',
+        'description' => '',
+        'isActive' => true,
+    ];
 
     /**
      * Mount the component for creating a new department or editing an existing one.
@@ -32,9 +37,11 @@ class DepartmentForm extends Component
             $this->authorize('update', $department);
 
             $this->departmentId = $department->id;
-            $this->name = $department->name;
-            $this->description = $department->description ?? '';
-            $this->isActive = $department->is_active;
+            $this->departmentForm = [
+                'name' => $department->name,
+                'description' => $department->description ?? '',
+                'isActive' => $department->is_active,
+            ];
 
             return;
         }
@@ -61,15 +68,19 @@ class DepartmentForm extends Component
         $department ? $this->authorize('update', $department) : $this->authorize('create', Department::class);
 
         $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('departments', 'name')->ignore($this->departmentId)],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'isActive' => ['boolean'],
-        ]);
+            'departmentForm.name' => ['required', 'string', 'max:255', Rule::unique('departments', 'name')->ignore($this->departmentId)],
+            'departmentForm.description' => ['nullable', 'string', 'max:1000'],
+            'departmentForm.isActive' => ['boolean'],
+        ], attributes: [
+            'departmentForm.name' => __('name'),
+            'departmentForm.description' => __('description'),
+            'departmentForm.isActive' => __('active'),
+        ])['departmentForm'];
 
         $department ??= new Department;
         $department->fill([
             'name' => $validated['name'],
-            'description' => $validated['description'] !== '' ? $validated['description'] : null,
+            'description' => filled($validated['description']) ? $validated['description'] : null,
             'is_active' => $validated['isActive'],
         ])->save();
 

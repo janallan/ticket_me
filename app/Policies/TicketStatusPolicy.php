@@ -33,10 +33,12 @@ class TicketStatusPolicy
     }
 
     /**
-     * Determine whether the user can delete the status. The default status cannot be deleted.
+     * Determine whether the user can delete the status. The default status and statuses in use cannot be deleted.
      */
     public function delete(User $user, TicketStatus $ticketStatus): bool
     {
-        return $user->can(Permission::TicketStatuses->value) && ! $ticketStatus->is_default;
+        return $user->can(Permission::TicketStatuses->value)
+            && ! $ticketStatus->is_default
+            && $ticketStatus->tickets()->doesntExist();
     }
 }

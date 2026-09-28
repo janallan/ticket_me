@@ -14,17 +14,17 @@
     <flux:separator variant="subtle" class="mb-6" />
 
     <form wire:submit="save" class="w-full max-w-lg space-y-6">
-        <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus />
+        <flux:input wire:model="ticketStatusForm.name" :label="__('Name')" type="text" required autofocus />
 
-        <x-badge-color-select :color="$color" :name="$name" />
+        <x-badge-color-select form="ticketStatusForm" :color="$ticketStatusForm['color']" :name="$ticketStatusForm['name']" />
 
-        <flux:input wire:model="sortOrder" :label="__('Order')" type="number" min="0" required
+        <flux:input wire:model="ticketStatusForm.sortOrder" :label="__('Order')" type="number" min="0" required
             :description="__('Lower numbers are listed first.')" />
 
-        <flux:checkbox wire:model="isClosed" :label="__('Counts as closed')"
+        <flux:checkbox wire:model="ticketStatusForm.isClosed" :label="__('Counts as closed')"
             :description="__('Tickets in this status are treated as finished and hidden from open queues.')" />
 
-        <flux:checkbox wire:model="isDefault" :label="__('Default for new tickets')"
+        <flux:checkbox wire:model="ticketStatusForm.isDefault" :label="__('Default for new tickets')"
             :disabled="$this->status?->is_default"
             :description="$this->status?->is_default
                 ? __('This is the default. Make another status the default to change it.')
@@ -46,7 +46,9 @@
             :heading="__('Delete status')"
             modal="confirm-ticket-status-deletion"
             :can-delete="auth()->user()->can('delete', $this->status)"
-            :blocked-reason="__('The default status cannot be deleted. Make another status the default first.')"
+            :blocked-reason="$this->status->is_default
+                ? __('The default status cannot be deleted. Make another status the default first.')
+                : __('Tickets use this status, so it cannot be deleted.')"
             :confirm-heading="__('Delete the :name status?', ['name' => $this->status->name])"
         />
     @endif

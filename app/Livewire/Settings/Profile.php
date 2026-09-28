@@ -4,9 +4,7 @@ namespace App\Livewire\Settings;
 
 use App\Concerns\ProfileValidationRules;
 use Flux\Flux;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -31,8 +29,8 @@ class Profile extends Component
      */
     public function mount(): void
     {
-        $this->name = Auth::user()->name;
-        $this->email = Auth::user()->email;
+        $this->name = user()->name;
+        $this->email = user()->email;
     }
 
     /**
@@ -40,7 +38,7 @@ class Profile extends Component
      */
     public function updateProfileInformation(): void
     {
-        $user = Auth::user();
+        $user = user();
 
         $validated = $this->validate([
             'name' => $this->nameRules(),
@@ -56,7 +54,7 @@ class Profile extends Component
      */
     public function resendVerificationNotification(): void
     {
-        $user = Auth::user();
+        $user = user();
 
         if ($user->hasVerifiedEmail()) {
             $this->redirectIntended(default: route('dashboard', absolute: false));
@@ -72,7 +70,7 @@ class Profile extends Component
     #[Computed]
     public function hasUnverifiedEmail(): bool
     {
-        return Auth::user() instanceof MustVerifyEmail && ! Auth::user()->hasVerifiedEmail();
+        return ! user()->hasVerifiedEmail();
     }
 
     public function render(): View
