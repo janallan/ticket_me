@@ -2,31 +2,24 @@
 
 namespace App\Livewire\Tickets;
 
-use App\Actions\Tickets\AddTicketMessage;
 use App\Actions\Tickets\AssignTicket;
-use App\Actions\Tickets\StoreTicketAttachments;
 use App\Actions\Tickets\UpdateTicketDetails;
 use App\Models\Department;
 use App\Models\Ticket;
-use App\Models\TicketMessage;
 use App\Models\TicketPriority;
 use App\Models\TicketStatus;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 /**
  * @property-read Ticket $ticket
- * @property-read Collection<int, TicketMessage> $messages
- * @property-read int $olderMessageCount
  * @property-read bool $canWork
  * @property-read Collection<int, TicketStatus> $statuses
  * @property-read Collection<int, TicketPriority> $priorities
@@ -35,27 +28,8 @@ use Livewire\WithFileUploads;
  */
 class TicketView extends Component
 {
-    use WithFileUploads;
-
-    /**
-     * How many thread entries are shown at first, and how many more each "Show older" click adds.
-     */
-    public const MESSAGES_PER_PAGE = 5;
-
     #[Locked]
     public int $ticketId;
-
-    /**
-     * The reply box, bound in the view as `replyForm.<field>`. `isInternal` turns the reply into an
-     * internal note, which only people who work the ticket may post.
-     *
-     * @var array{body: string, isInternal: bool, attachments: array<int, UploadedFile>}
-     */
-    public array $replyForm = [
-        'body' => '',
-        'isInternal' => false,
-        'attachments' => [],
-    ];
 
     /**
      * The details panel, bound in the view as `detailsForm.<field>`; each value is a record ID.
@@ -76,11 +50,6 @@ class TicketView extends Component
     public array $assignForm = [
         'assignee' => '',
     ];
-
-    /**
-     * How many of the newest thread entries are shown.
-     */
-    public int $shownMessages = self::MESSAGES_PER_PAGE;
 
     /**
      * Mount the component for the given ticket.
@@ -104,54 +73,6 @@ class TicketView extends Component
     public function ticket(): Ticket
     {
         return Ticket::with(['department', 'status', 'priority', 'requester', 'assignee', 'attachments'])->findOrFail($this->ticketId);
-    }
-
-    /**
-     * Get the newest thread entries the user may see, displayed oldest first. Internal notes are only
-     * included for people who work the ticket. Each row also carries `thread_total`, the number of
-     * entries the user may see in the whole thread, counted by a window function in the same query.
-     *
-     * @return Collection<int, TicketMessage>
-     */
-    #[Computed]
-    public function messages(): Collection
-    {
-        return $this->visibleMessagesQuery()
-            ->select('ticket_messages.*')
-            ->selectRaw('count(*) over () as thread_total')
-            ->with(['author', 'attachments'])
-            ->reorder()
-            ->latest()
-            ->latest('id')
-            ->take($this->shownMessages)
-            ->get()
-            ->reverse()
-            ->values();
-    }
-
-    /**
-     * Count the entries not shown yet because they are older than the ones on the page.
-     */
-    #[Computed]
-    public function olderMessageCount(): int
-    {
-        $first = $this->messages->first();
-
-        if ($first === null) {
-            return 0;
-        }
-
-        return max(0, (int) $first->getAttribute('thread_total') - $this->messages->count());
-    }
-
-    /**
-     * Show the next batch of older entries.
-     */
-    public function showOlderMessages(): void
-    {
-        $this->shownMessages += self::MESSAGES_PER_PAGE;
-
-        unset($this->messages, $this->olderMessageCount);
     }
 
     /**
@@ -211,46 +132,12 @@ class TicketView extends Component
     }
 
     /**
-     * Remove a file from the pending attachments.
+     * Reload the ticket after a reply, which can reopen it or bump its activity.
      */
-    public function removeAttachment(int $index): void
+    #[On('ticket-message-added')]
+    public function messageAdded(): void
     {
-        unset($this->replyForm['attachments'][$index]);
-
-        $this->replyForm['attachments'] = array_values($this->replyForm['attachments']);
-    }
-
-    /**
-     * Post a public reply, or an internal note for people who work the ticket.
-     */
-    public function reply(AddTicketMessage $addTicketMessage): void
-    {
-        $ticket = $this->ticket;
-
-        $this->authorize('reply', $ticket);
-
-        if ($this->replyForm['isInternal']) {
-            $this->authorize('work', $ticket);
-        }
-
-        $validated = $this->validate([
-            'replyForm.body' => ['required', 'string', 'max:20000'],
-            'replyForm.isInternal' => ['boolean'],
-            ...StoreTicketAttachments::rules('replyForm.attachments'),
-        ], attributes: [
-            'replyForm.body' => __('message'),
-            'replyForm.isInternal' => __('internal note'),
-            'replyForm.attachments' => __('attachments'),
-            'replyForm.attachments.*' => __('attachment'),
-        ])['replyForm'];
-
-        $addTicketMessage($ticket, user(), $validated['body'], $validated['isInternal'], $this->replyForm['attachments']);
-
-        $this->reset('replyForm');
-        $this->shownMessages++;
         $this->refreshTicket();
-
-        Flux::toast(variant: 'success', text: $validated['isInternal'] ? __('Internal note added.') : __('Reply sent.'));
     }
 
     /**
@@ -284,7 +171,7 @@ class TicketView extends Component
             return;
         }
 
-        $this->refreshTicket();
+        $this->ticketChanged();
 
         Flux::toast(variant: 'success', text: __('Ticket details saved.'));
     }
@@ -308,7 +195,7 @@ class TicketView extends Component
 
         $assignTicket($ticket, user(), $assignee, 'assignForm.assignee');
 
-        $this->refreshTicket();
+        $this->ticketChanged();
 
         Flux::toast(variant: 'success', text: $assignee
             ? __('Assigned to :name.', ['name' => $assignee->name])
@@ -326,7 +213,7 @@ class TicketView extends Component
 
         $assignTicket($ticket, user(), user());
 
-        $this->refreshTicket();
+        $this->ticketChanged();
 
         Flux::toast(variant: 'success', text: __('You claimed this ticket.'));
     }
@@ -354,9 +241,19 @@ class TicketView extends Component
      */
     private function refreshTicket(): void
     {
-        unset($this->ticket, $this->messages, $this->olderMessageCount, $this->canWork, $this->departments, $this->assignableUsers);
+        unset($this->ticket, $this->canWork, $this->departments, $this->assignableUsers);
 
         $this->fillDetails($this->ticket);
+    }
+
+    /**
+     * Reload after a change here, and tell the thread so it shows the new log entry.
+     */
+    private function ticketChanged(): void
+    {
+        $this->refreshTicket();
+
+        $this->dispatch('ticket-updated');
     }
 
     /**
@@ -370,16 +267,6 @@ class TicketView extends Component
             'department' => (string) $ticket->department_id,
         ];
         $this->assignForm['assignee'] = (string) $ticket->assignee_id;
-    }
-
-    /**
-     * Query the thread entries the user may see.
-     *
-     * @return Builder<TicketMessage>
-     */
-    private function visibleMessagesQuery(): Builder
-    {
-        return $this->ticket->messages()->getQuery()->unless($this->canWork, fn (Builder $query) => $query->public());
     }
 
     public function render(): View

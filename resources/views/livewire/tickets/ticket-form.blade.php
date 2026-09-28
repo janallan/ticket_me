@@ -22,8 +22,8 @@
 
     <flux:separator variant="subtle" class="mb-6" />
 
-    <form wire:submit="save" class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <aside class="lg:order-last">
+    <form wire:submit="save" class="grid gap-8 lg:grid-cols-3">
+        <aside class="lg:order-last lg:col-span-1">
             <flux:card class="space-y-4">
                 <flux:heading>{{ __('Details') }}</flux:heading>
 
@@ -59,7 +59,7 @@
             </flux:card>
         </aside>
 
-        <div class="space-y-6">
+        <div class="min-w-0 space-y-6 lg:col-span-2">
             <flux:card class="space-y-6">
                 <flux:input wire:model="ticketForm.subject" :label="__('Subject')" type="text" required autofocus />
 

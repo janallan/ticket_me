@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Tickets;
 
+use App\Livewire\Tickets\TicketMessageForm;
+use App\Livewire\Tickets\TicketMessageList;
 use App\Livewire\Tickets\TicketView;
 use App\Models\Department;
 use App\Models\TicketMessage;
@@ -40,7 +42,7 @@ class TicketConversationTest extends TestCase
 
         $this->actingAs($requester);
 
-        Livewire::test(TicketView::class, ['ticket' => $ticket])
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])
             ->set('replyForm.body', 'Any update?')
             ->set('replyForm.attachments', [UploadedFile::fake()->create('log.txt', 5, 'text/plain')])
             ->call('reply')
@@ -66,7 +68,7 @@ class TicketConversationTest extends TestCase
 
         $this->actingAs($requester);
 
-        Livewire::test(TicketView::class, ['ticket' => $ticket])
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])
             ->set('replyForm.body', 'Any update?')
             ->call('reply')
             ->assertHasNoErrors();
@@ -85,7 +87,7 @@ class TicketConversationTest extends TestCase
 
         $this->actingAs($requester);
 
-        Livewire::test(TicketView::class, ['ticket' => $ticket])
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])
             ->set('replyForm.body', 'Any update?')
             ->call('reply');
 
@@ -102,7 +104,7 @@ class TicketConversationTest extends TestCase
 
         $this->actingAs($agent);
 
-        Livewire::test(TicketView::class, ['ticket' => $ticket])
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])
             ->set('replyForm.body', 'On my way.')
             ->call('reply')
             ->assertHasNoErrors();
@@ -121,7 +123,7 @@ class TicketConversationTest extends TestCase
 
         $this->actingAs($this->agentIn($this->it));
 
-        Livewire::test(TicketView::class, ['ticket' => $ticket])
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])
             ->set('replyForm.body', 'Checked the logs, looks like hardware.')
             ->set('replyForm.isInternal', true)
             ->call('reply')
@@ -141,7 +143,7 @@ class TicketConversationTest extends TestCase
 
         $this->actingAs($requester);
 
-        Livewire::test(TicketView::class, ['ticket' => $ticket])
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])
             ->set('replyForm.body', 'Sneaky note')
             ->set('replyForm.isInternal', true)
             ->call('reply')
@@ -157,7 +159,7 @@ class TicketConversationTest extends TestCase
 
         $this->actingAs($requester);
 
-        Livewire::test(TicketView::class, ['ticket' => $ticket])
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])
             ->set('replyForm.body', 'It is broken again.')
             ->call('reply')
             ->assertHasNoErrors();
@@ -175,7 +177,7 @@ class TicketConversationTest extends TestCase
 
         $this->actingAs($agent);
 
-        Livewire::test(TicketView::class, ['ticket' => $ticket])
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])
             ->set('replyForm.body', 'Closing note for the record.')
             ->call('reply');
 
@@ -187,7 +189,7 @@ class TicketConversationTest extends TestCase
         $requester = $this->requester();
         $ticket = $this->ticketIn($this->it, $requester);
 
-        $perPage = TicketView::MESSAGES_PER_PAGE;
+        $perPage = TicketMessageList::MESSAGES_PER_PAGE;
         $total = $perPage + 3;
 
         foreach (range(1, $total) as $number) {
@@ -202,7 +204,7 @@ class TicketConversationTest extends TestCase
 
         $this->actingAs($requester);
 
-        Livewire::test(TicketView::class, ['ticket' => $ticket])
+        Livewire::test(TicketMessageList::class, ['ticket' => $ticket])
             ->assertSet('olderMessageCount', 3)
             ->assertSee(__('Show older (:count more)', ['count' => 3]))
             ->assertSeeInOrder([sprintf('Reply number %03d', 4), sprintf('Reply number %03d', $total)])
@@ -214,6 +216,53 @@ class TicketConversationTest extends TestCase
             ->assertDontSeeHtml('data-test="show-older-messages-button"');
     }
 
+    public function test_posting_a_reply_updates_the_thread_and_the_ticket_page(): void
+    {
+        $requester = $this->requester();
+        $ticket = $this->ticketIn($this->it, $requester, ['ticket_status_id' => $this->closedStatus->id, 'closed_at' => now()]);
+
+        $this->actingAs($requester);
+
+        $page = Livewire::test(TicketView::class, ['ticket' => $ticket])
+            ->assertSet('detailsForm.status', (string) $this->closedStatus->id);
+        $thread = Livewire::test(TicketMessageList::class, ['ticket' => $ticket])
+            ->assertDontSee('It is broken again.');
+
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])
+            ->set('replyForm.body', 'It is broken again.')
+            ->call('reply')
+            ->assertDispatched('ticket-message-added');
+
+        $thread->dispatch('ticket-message-added')->assertSee('It is broken again.');
+        $page->dispatch('ticket-message-added')->assertSet('detailsForm.status', (string) $this->openStatus->id);
+    }
+
+    public function test_changing_the_details_tells_the_thread_to_show_the_log_entry(): void
+    {
+        $ticket = $this->ticketIn($this->it, $this->requester());
+
+        $this->actingAs($this->agentIn($this->it));
+
+        $thread = Livewire::test(TicketMessageList::class, ['ticket' => $ticket])
+            ->assertDontSee(__('Changes (original values)'));
+
+        Livewire::test(TicketView::class, ['ticket' => $ticket])
+            ->set('detailsForm.status', (string) $this->closedStatus->id)
+            ->call('saveDetails')
+            ->assertDispatched('ticket-updated');
+
+        $thread->dispatch('ticket-updated')->assertSee(__('Changes (original values)'));
+    }
+
+    public function test_the_reply_form_cannot_be_mounted_by_someone_who_cannot_reply(): void
+    {
+        $ticket = $this->ticketIn($this->it, $this->requester());
+
+        $this->actingAs($this->requester($this->it));
+
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])->assertForbidden();
+    }
+
     public function test_a_reply_needs_a_message(): void
     {
         $requester = $this->requester();
@@ -221,7 +270,7 @@ class TicketConversationTest extends TestCase
 
         $this->actingAs($requester);
 
-        Livewire::test(TicketView::class, ['ticket' => $ticket])
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])
             ->call('reply')
             ->assertHasErrors(['replyForm.body' => 'required']);
     }

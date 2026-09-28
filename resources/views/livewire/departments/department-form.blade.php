@@ -13,51 +13,57 @@
 
     <flux:separator variant="subtle" class="mb-6" />
 
-    <form wire:submit="save" class="w-full max-w-lg space-y-6">
-        <flux:input wire:model="departmentForm.name" :label="__('Name')" type="text" required autofocus />
+    <div class="w-full max-w-2xl space-y-6">
+        <flux:card>
+            <form wire:submit="save" class="space-y-6">
+                <flux:heading>{{ __('Department details') }}</flux:heading>
 
-        <flux:textarea wire:model="departmentForm.description" :label="__('Description')" rows="3" />
+                <flux:input wire:model="departmentForm.name" :label="__('Name')" type="text" required autofocus />
 
-        <flux:switch wire:model="departmentForm.isActive" :label="__('Active')"
-            :description="__('Inactive departments can no longer receive new tickets.')" />
+                <flux:textarea wire:model="departmentForm.description" :label="__('Description')" rows="3" />
+
+                <flux:switch wire:model="departmentForm.isActive" :label="__('Active')"
+                    :description="__('Inactive departments can no longer receive new tickets.')" />
+
+                @if ($this->department)
+                    <flux:field>
+                        <flux:label>{{ __('Members') }}</flux:label>
+                        <flux:description>{{ __('Members are assigned from each user\'s page.') }}</flux:description>
+
+                        <div class="flex items-center gap-3">
+                            <flux:text>{{ trans_choice(':count member|:count members', $this->department->users_count) }}</flux:text>
+
+                            @can('viewAny', App\Models\User::class)
+                                <flux:button size="sm" variant="ghost" icon="users"
+                                    :href="route('users.index', ['department' => $this->department->id])" wire:navigate>
+                                    {{ __('View members') }}
+                                </flux:button>
+                            @endcan
+                        </div>
+                    </flux:field>
+                @endif
+
+                <div class="flex items-center gap-4">
+                    <flux:button variant="primary" type="submit" data-test="save-department-button">
+                        {{ __('Save') }}
+                    </flux:button>
+
+                    <flux:button variant="ghost" :href="route('departments.index')" wire:navigate>
+                        {{ __('Cancel') }}
+                    </flux:button>
+                </div>
+            </form>
+        </flux:card>
 
         @if ($this->department)
-            <flux:field>
-                <flux:label>{{ __('Members') }}</flux:label>
-                <flux:description>{{ __('Members are assigned from each user\'s page.') }}</flux:description>
-
-                <div class="flex items-center gap-3">
-                    <flux:text>{{ trans_choice(':count member|:count members', $this->department->users_count) }}</flux:text>
-
-                    @can('viewAny', App\Models\User::class)
-                        <flux:button size="sm" variant="ghost" icon="users"
-                            :href="route('users.index', ['department' => $this->department->id])" wire:navigate>
-                            {{ __('View members') }}
-                        </flux:button>
-                    @endcan
-                </div>
-            </flux:field>
+            <x-settings-delete-section
+                :heading="__('Delete department')"
+                modal="confirm-department-deletion"
+                :can-delete="auth()->user()->can('delete', $this->department)"
+                :blocked-reason="__('This department has tickets, so it cannot be deleted. Mark it inactive to stop new tickets instead.')"
+                :confirm-heading="__('Delete the :name department?', ['name' => $this->department->name])"
+                :confirm-description="__('To keep its history but stop new tickets, mark it inactive instead.')"
+            />
         @endif
-
-        <div class="flex items-center gap-4">
-            <flux:button variant="primary" type="submit" data-test="save-department-button">
-                {{ __('Save') }}
-            </flux:button>
-
-            <flux:button variant="ghost" :href="route('departments.index')" wire:navigate>
-                {{ __('Cancel') }}
-            </flux:button>
-        </div>
-    </form>
-
-    @if ($this->department)
-        <x-settings-delete-section
-            :heading="__('Delete department')"
-            modal="confirm-department-deletion"
-            :can-delete="auth()->user()->can('delete', $this->department)"
-            :blocked-reason="__('This department has tickets, so it cannot be deleted. Mark it inactive to stop new tickets instead.')"
-            :confirm-heading="__('Delete the :name department?', ['name' => $this->department->name])"
-            :confirm-description="__('To keep its history but stop new tickets, mark it inactive instead.')"
-        />
-    @endif
+    </div>
 </section>

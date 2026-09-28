@@ -4,6 +4,7 @@ namespace Tests\Feature\Tickets;
 
 use App\Enums\TicketMessageType;
 use App\Livewire\Tickets\TicketForm;
+use App\Livewire\Tickets\TicketMessageForm;
 use App\Livewire\Tickets\TicketView;
 use App\Models\Department;
 use App\Models\TicketMessage;
@@ -261,7 +262,7 @@ class EditTicketTest extends TestCase
 
         $this->actingAs($requester);
 
-        Livewire::test(TicketView::class, ['ticket' => $ticket])
+        Livewire::test(TicketMessageForm::class, ['ticket' => $ticket])
             ->set('replyForm.body', 'It is broken again.')
             ->call('reply')
             ->assertHasNoErrors();

@@ -7,8 +7,8 @@
     'confirmDescription' => null,
 ])
 
-{{-- Delete section for settings forms. Calls the Livewire "delete" action after confirmation. --}}
-<section class="mt-12 max-w-lg space-y-4">
+{{-- Delete card for settings forms. Calls the Livewire "delete" action after confirmation. --}}
+<flux:card class="space-y-4">
     <div>
         <flux:heading>{{ $heading }}</flux:heading>
 
@@ -43,4 +43,4 @@
             </div>
         </flux:modal>
     @endif
-</section>
+</flux:card>

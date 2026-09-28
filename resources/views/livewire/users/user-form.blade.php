@@ -24,110 +24,116 @@
 
     <flux:separator variant="subtle" class="mb-6" />
 
-    <form wire:submit="save" class="w-full max-w-lg space-y-6">
-        <flux:input wire:model="userForm.name" :label="__('Name')" type="text" required autofocus autocomplete="off" />
+    <div class="w-full max-w-2xl space-y-6">
+        <flux:card>
+            <form wire:submit="save" class="space-y-6">
+                <flux:heading>{{ __('Account details') }}</flux:heading>
 
-        <flux:input wire:model="userForm.email" :label="__('Email')" type="email" required autocomplete="off" />
+                <flux:input wire:model="userForm.name" :label="__('Name')" type="text" required autofocus autocomplete="off" />
 
-        @if ($this->canChangeRole)
-            <flux:select wire:model="userForm.role" :label="__('Role')" :placeholder="__('Choose a role...')" required>
-                @foreach ($this->assignableRoles as $roleOption)
-                    <flux:select.option :value="$roleOption->name" wire:key="role-option-{{ $roleOption->id }}">{{ $roleOption->name }}</flux:select.option>
-                @endforeach
-            </flux:select>
-        @else
-            <flux:input :value="$userForm['role'] !== '' ? $userForm['role'] : __('No role')" :label="__('Role')" disabled
-                :description="__('You cannot change your own role.')" />
-        @endif
+                <flux:input wire:model="userForm.email" :label="__('Email')" type="email" required autocomplete="off" />
 
-        <flux:checkbox.group wire:model.live="userForm.departments" :label="__('Departments')"
-            :description="__('The user can belong to several departments, and works tickets in each of them.')">
-            @forelse ($this->availableDepartments as $department)
-                <flux:checkbox
-                    :value="$department->id"
-                    :label="$department->name"
-                    :description="$department->is_active ? null : __('Inactive')"
-                    wire:key="department-option-{{ $department->id }}"
-                />
-            @empty
-                <flux:text variant="subtle">{{ __('There are no active departments yet.') }}</flux:text>
-            @endforelse
-        </flux:checkbox.group>
-
-        <flux:select wire:model="userForm.defaultDepartment" :label="__('Default department')"
-            :placeholder="$this->chosenDepartments->isEmpty() ? __('Choose departments first...') : __('Choose a default department...')"
-            :disabled="$this->chosenDepartments->isEmpty()" required>
-            @foreach ($this->chosenDepartments as $chosenDepartment)
-                <flux:select.option :value="$chosenDepartment->id" wire:key="default-department-option-{{ $chosenDepartment->id }}">{{ $chosenDepartment->name }}</flux:select.option>
-            @endforeach
-        </flux:select>
-
-        <div class="flex items-center gap-4">
-            <flux:button variant="primary" type="submit" data-test="save-user-button">
-                {{ $this->user ? __('Save') : __('Create user') }}
-            </flux:button>
-
-            <flux:button variant="ghost" :href="route('users.index')" wire:navigate>
-                {{ __('Cancel') }}
-            </flux:button>
-        </div>
-    </form>
-
-    @if ($this->user)
-        <section class="mt-12 max-w-lg space-y-4">
-            <div>
-                <flux:heading>{{ __('Password') }}</flux:heading>
-                <flux:subheading>{{ __('Send the user a new link to set their password.') }}</flux:subheading>
-            </div>
-
-            <flux:button wire:click="sendPasswordLink" icon="envelope" data-test="send-password-link-button">
-                {{ __('Send set-password link') }}
-            </flux:button>
-        </section>
-
-        @can('deactivate', $this->user)
-            <section class="mt-12 max-w-lg space-y-4">
-                @if ($this->user->isActive())
-                    <div>
-                        <flux:heading>{{ __('Deactivate account') }}</flux:heading>
-                        <flux:subheading>{{ __('The user will be signed out and can no longer sign in. Their history is kept.') }}</flux:subheading>
-                    </div>
-
-                    <flux:error name="deactivate" />
-
-                    <flux:modal.trigger name="confirm-user-deactivation">
-                        <flux:button variant="danger" data-test="deactivate-user-button">{{ __('Deactivate') }}</flux:button>
-                    </flux:modal.trigger>
-
-                    <flux:modal name="confirm-user-deactivation" class="max-w-lg">
-                        <div class="space-y-6">
-                            <div>
-                                <flux:heading size="lg" class="pe-8">{{ __('Deactivate :name?', ['name' => $this->user->name]) }}</flux:heading>
-                                <flux:subheading>{{ __('You can reactivate the account later.') }}</flux:subheading>
-                            </div>
-
-                            <div class="flex justify-end gap-2">
-                                <flux:modal.close>
-                                    <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
-                                </flux:modal.close>
-
-                                <flux:button variant="danger" wire:click="deactivate" data-test="confirm-deactivate-user-button">
-                                    {{ __('Deactivate') }}
-                                </flux:button>
-                            </div>
-                        </div>
-                    </flux:modal>
+                @if ($this->canChangeRole)
+                    <flux:select wire:model="userForm.role" :label="__('Role')" :placeholder="__('Choose a role...')" required>
+                        @foreach ($this->assignableRoles as $roleOption)
+                            <flux:select.option :value="$roleOption->name" wire:key="role-option-{{ $roleOption->id }}">{{ $roleOption->name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
                 @else
-                    <div>
-                        <flux:heading>{{ __('Reactivate account') }}</flux:heading>
-                        <flux:subheading>
-                            {{ __('Deactivated :date. Reactivating lets the user sign in again.', ['date' => $this->user->deactivated_at?->toFormattedDayDateString()]) }}
-                        </flux:subheading>
-                    </div>
-
-                    <flux:button variant="primary" wire:click="reactivate" data-test="reactivate-user-button">{{ __('Reactivate') }}</flux:button>
+                    <flux:input :value="$userForm['role'] !== '' ? $userForm['role'] : __('No role')" :label="__('Role')" disabled
+                        :description="__('You cannot change your own role.')" />
                 @endif
-            </section>
-        @endcan
-    @endif
+
+                <flux:checkbox.group wire:model.live="userForm.departments" :label="__('Departments')"
+                    :description="__('The user can belong to several departments, and works tickets in each of them.')">
+                    @forelse ($this->availableDepartments as $department)
+                        <flux:checkbox
+                            :value="$department->id"
+                            :label="$department->name"
+                            :description="$department->is_active ? null : __('Inactive')"
+                            wire:key="department-option-{{ $department->id }}"
+                        />
+                    @empty
+                        <flux:text variant="subtle">{{ __('There are no active departments yet.') }}</flux:text>
+                    @endforelse
+                </flux:checkbox.group>
+
+                <flux:select wire:model="userForm.defaultDepartment" :label="__('Default department')"
+                    :placeholder="$this->chosenDepartments->isEmpty() ? __('Choose departments first...') : __('Choose a default department...')"
+                    :disabled="$this->chosenDepartments->isEmpty()" required>
+                    @foreach ($this->chosenDepartments as $chosenDepartment)
+                        <flux:select.option :value="$chosenDepartment->id" wire:key="default-department-option-{{ $chosenDepartment->id }}">{{ $chosenDepartment->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <div class="flex items-center gap-4">
+                    <flux:button variant="primary" type="submit" data-test="save-user-button">
+                        {{ $this->user ? __('Save') : __('Create user') }}
+                    </flux:button>
+
+                    <flux:button variant="ghost" :href="route('users.index')" wire:navigate>
+                        {{ __('Cancel') }}
+                    </flux:button>
+                </div>
+            </form>
+        </flux:card>
+
+        @if ($this->user)
+            <flux:card class="space-y-4" data-test="user-password-card">
+                <div>
+                    <flux:heading>{{ __('Password') }}</flux:heading>
+                    <flux:subheading>{{ __('Send the user a new link to set their password.') }}</flux:subheading>
+                </div>
+
+                <flux:button wire:click="sendPasswordLink" icon="envelope" data-test="send-password-link-button">
+                    {{ __('Send set-password link') }}
+                </flux:button>
+            </flux:card>
+
+            @can('deactivate', $this->user)
+                <flux:card class="space-y-4" data-test="user-status-card">
+                    @if ($this->user->isActive())
+                        <div>
+                            <flux:heading>{{ __('Deactivate account') }}</flux:heading>
+                            <flux:subheading>{{ __('The user will be signed out and can no longer sign in. Their history is kept.') }}</flux:subheading>
+                        </div>
+
+                        <flux:error name="deactivate" />
+
+                        <flux:modal.trigger name="confirm-user-deactivation">
+                            <flux:button variant="danger" data-test="deactivate-user-button">{{ __('Deactivate') }}</flux:button>
+                        </flux:modal.trigger>
+
+                        <flux:modal name="confirm-user-deactivation" class="max-w-lg">
+                            <div class="space-y-6">
+                                <div>
+                                    <flux:heading size="lg" class="pe-8">{{ __('Deactivate :name?', ['name' => $this->user->name]) }}</flux:heading>
+                                    <flux:subheading>{{ __('You can reactivate the account later.') }}</flux:subheading>
+                                </div>
+
+                                <div class="flex justify-end gap-2">
+                                    <flux:modal.close>
+                                        <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
+                                    </flux:modal.close>
+
+                                    <flux:button variant="danger" wire:click="deactivate" data-test="confirm-deactivate-user-button">
+                                        {{ __('Deactivate') }}
+                                    </flux:button>
+                                </div>
+                            </div>
+                        </flux:modal>
+                    @else
+                        <div>
+                            <flux:heading>{{ __('Reactivate account') }}</flux:heading>
+                            <flux:subheading>
+                                {{ __('Deactivated :date. Reactivating lets the user sign in again.', ['date' => $this->user->deactivated_at?->toFormattedDayDateString()]) }}
+                            </flux:subheading>
+                        </div>
+
+                        <flux:button variant="primary" wire:click="reactivate" data-test="reactivate-user-button">{{ __('Reactivate') }}</flux:button>
+                    @endif
+                </flux:card>
+            @endcan
+        @endif
+    </div>
 </section>

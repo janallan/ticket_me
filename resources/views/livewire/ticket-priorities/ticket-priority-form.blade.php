@@ -13,40 +13,46 @@
 
     <flux:separator variant="subtle" class="mb-6" />
 
-    <form wire:submit="save" class="w-full max-w-lg space-y-6">
-        <flux:input wire:model="ticketPriorityForm.name" :label="__('Name')" type="text" required autofocus />
+    <div class="w-full max-w-2xl space-y-6">
+        <flux:card>
+            <form wire:submit="save" class="space-y-6">
+                <flux:heading>{{ __('Priority details') }}</flux:heading>
 
-        <x-badge-color-select form="ticketPriorityForm" :color="$ticketPriorityForm['color']" :name="$ticketPriorityForm['name']" />
+                <flux:input wire:model="ticketPriorityForm.name" :label="__('Name')" type="text" required autofocus />
 
-        <flux:input wire:model="ticketPriorityForm.sortOrder" :label="__('Order')" type="number" min="0" required
-            :description="__('Lower numbers are listed first.')" />
+                <x-badge-color-select form="ticketPriorityForm" :color="$ticketPriorityForm['color']" :name="$ticketPriorityForm['name']" />
 
-        <flux:checkbox wire:model="ticketPriorityForm.isDefault" :label="__('Default for new tickets')"
-            :disabled="$this->priority?->is_default"
-            :description="$this->priority?->is_default
-                ? __('This is the default. Make another priority the default to change it.')
-                : __('New tickets get this priority unless another is chosen.')" />
+                <flux:input wire:model="ticketPriorityForm.sortOrder" :label="__('Order')" type="number" min="0" required
+                    :description="__('Lower numbers are listed first.')" />
 
-        <div class="flex items-center gap-4">
-            <flux:button variant="primary" type="submit" data-test="save-ticket-priority-button">
-                {{ __('Save') }}
-            </flux:button>
+                <flux:checkbox wire:model="ticketPriorityForm.isDefault" :label="__('Default for new tickets')"
+                    :disabled="$this->priority?->is_default"
+                    :description="$this->priority?->is_default
+                        ? __('This is the default. Make another priority the default to change it.')
+                        : __('New tickets get this priority unless another is chosen.')" />
 
-            <flux:button variant="ghost" :href="route('ticket-priorities.index')" wire:navigate>
-                {{ __('Cancel') }}
-            </flux:button>
-        </div>
-    </form>
+                <div class="flex items-center gap-4">
+                    <flux:button variant="primary" type="submit" data-test="save-ticket-priority-button">
+                        {{ __('Save') }}
+                    </flux:button>
 
-    @if ($this->priority)
-        <x-settings-delete-section
-            :heading="__('Delete priority')"
-            modal="confirm-ticket-priority-deletion"
-            :can-delete="auth()->user()->can('delete', $this->priority)"
-            :blocked-reason="$this->priority->is_default
-                ? __('The default priority cannot be deleted. Make another priority the default first.')
-                : __('Tickets use this priority, so it cannot be deleted.')"
-            :confirm-heading="__('Delete the :name priority?', ['name' => $this->priority->name])"
-        />
-    @endif
+                    <flux:button variant="ghost" :href="route('ticket-priorities.index')" wire:navigate>
+                        {{ __('Cancel') }}
+                    </flux:button>
+                </div>
+            </form>
+        </flux:card>
+
+        @if ($this->priority)
+            <x-settings-delete-section
+                :heading="__('Delete priority')"
+                modal="confirm-ticket-priority-deletion"
+                :can-delete="auth()->user()->can('delete', $this->priority)"
+                :blocked-reason="$this->priority->is_default
+                    ? __('The default priority cannot be deleted. Make another priority the default first.')
+                    : __('Tickets use this priority, so it cannot be deleted.')"
+                :confirm-heading="__('Delete the :name priority?', ['name' => $this->priority->name])"
+            />
+        @endif
+    </div>
 </section>

@@ -13,43 +13,49 @@
 
     <flux:separator variant="subtle" class="mb-6" />
 
-    <form wire:submit="save" class="w-full max-w-lg space-y-6">
-        <flux:input wire:model="ticketStatusForm.name" :label="__('Name')" type="text" required autofocus />
+    <div class="w-full max-w-2xl space-y-6">
+        <flux:card>
+            <form wire:submit="save" class="space-y-6">
+                <flux:heading>{{ __('Status details') }}</flux:heading>
 
-        <x-badge-color-select form="ticketStatusForm" :color="$ticketStatusForm['color']" :name="$ticketStatusForm['name']" />
+                <flux:input wire:model="ticketStatusForm.name" :label="__('Name')" type="text" required autofocus />
 
-        <flux:input wire:model="ticketStatusForm.sortOrder" :label="__('Order')" type="number" min="0" required
-            :description="__('Lower numbers are listed first.')" />
+                <x-badge-color-select form="ticketStatusForm" :color="$ticketStatusForm['color']" :name="$ticketStatusForm['name']" />
 
-        <flux:checkbox wire:model="ticketStatusForm.isClosed" :label="__('Counts as closed')"
-            :description="__('Tickets in this status are treated as finished and hidden from open queues.')" />
+                <flux:input wire:model="ticketStatusForm.sortOrder" :label="__('Order')" type="number" min="0" required
+                    :description="__('Lower numbers are listed first.')" />
 
-        <flux:checkbox wire:model="ticketStatusForm.isDefault" :label="__('Default for new tickets')"
-            :disabled="$this->status?->is_default"
-            :description="$this->status?->is_default
-                ? __('This is the default. Make another status the default to change it.')
-                : __('New tickets start in this status.')" />
+                <flux:checkbox wire:model="ticketStatusForm.isClosed" :label="__('Counts as closed')"
+                    :description="__('Tickets in this status are treated as finished and hidden from open queues.')" />
 
-        <div class="flex items-center gap-4">
-            <flux:button variant="primary" type="submit" data-test="save-ticket-status-button">
-                {{ __('Save') }}
-            </flux:button>
+                <flux:checkbox wire:model="ticketStatusForm.isDefault" :label="__('Default for new tickets')"
+                    :disabled="$this->status?->is_default"
+                    :description="$this->status?->is_default
+                        ? __('This is the default. Make another status the default to change it.')
+                        : __('New tickets start in this status.')" />
 
-            <flux:button variant="ghost" :href="route('ticket-statuses.index')" wire:navigate>
-                {{ __('Cancel') }}
-            </flux:button>
-        </div>
-    </form>
+                <div class="flex items-center gap-4">
+                    <flux:button variant="primary" type="submit" data-test="save-ticket-status-button">
+                        {{ __('Save') }}
+                    </flux:button>
 
-    @if ($this->status)
-        <x-settings-delete-section
-            :heading="__('Delete status')"
-            modal="confirm-ticket-status-deletion"
-            :can-delete="auth()->user()->can('delete', $this->status)"
-            :blocked-reason="$this->status->is_default
-                ? __('The default status cannot be deleted. Make another status the default first.')
-                : __('Tickets use this status, so it cannot be deleted.')"
-            :confirm-heading="__('Delete the :name status?', ['name' => $this->status->name])"
-        />
-    @endif
+                    <flux:button variant="ghost" :href="route('ticket-statuses.index')" wire:navigate>
+                        {{ __('Cancel') }}
+                    </flux:button>
+                </div>
+            </form>
+        </flux:card>
+
+        @if ($this->status)
+            <x-settings-delete-section
+                :heading="__('Delete status')"
+                modal="confirm-ticket-status-deletion"
+                :can-delete="auth()->user()->can('delete', $this->status)"
+                :blocked-reason="$this->status->is_default
+                    ? __('The default status cannot be deleted. Make another status the default first.')
+                    : __('Tickets use this status, so it cannot be deleted.')"
+                :confirm-heading="__('Delete the :name status?', ['name' => $this->status->name])"
+            />
+        @endif
+    </div>
 </section>

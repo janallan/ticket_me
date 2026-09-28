@@ -13,71 +13,77 @@
 
     <flux:separator variant="subtle" class="mb-6" />
 
-    <form wire:submit="save" class="w-full max-w-lg space-y-6">
-        <flux:input wire:model="roleForm.name" :label="__('Name')" type="text" required autofocus />
+    <div class="w-full max-w-2xl space-y-6">
+        <flux:card>
+            <form wire:submit="save" class="space-y-6">
+                <flux:heading>{{ __('Role details') }}</flux:heading>
 
-        <flux:checkbox.group wire:model="roleForm.permissions" :label="__('Permissions')">
-            @foreach (App\Enums\Permission::cases() as $permission)
-                <flux:checkbox
-                    :value="$permission->value"
-                    :label="$permission->label()"
-                    :description="$permission->description()"
-                    wire:key="permission-{{ $permission->value }}"
-                />
-            @endforeach
-        </flux:checkbox.group>
+                <flux:input wire:model="roleForm.name" :label="__('Name')" type="text" required autofocus />
 
-        <div class="flex items-center gap-4">
-            <flux:button variant="primary" type="submit" data-test="save-role-button">
-                {{ __('Save') }}
-            </flux:button>
+                <flux:checkbox.group wire:model="roleForm.permissions" :label="__('Permissions')">
+                    @foreach (App\Enums\Permission::cases() as $permission)
+                        <flux:checkbox
+                            :value="$permission->value"
+                            :label="$permission->label()"
+                            :description="$permission->description()"
+                            wire:key="permission-{{ $permission->value }}"
+                        />
+                    @endforeach
+                </flux:checkbox.group>
 
-            <flux:button variant="ghost" :href="route('roles.index')" wire:navigate>
-                {{ __('Cancel') }}
-            </flux:button>
-        </div>
-    </form>
+                <div class="flex items-center gap-4">
+                    <flux:button variant="primary" type="submit" data-test="save-role-button">
+                        {{ __('Save') }}
+                    </flux:button>
 
-    @if ($this->role)
-        <section class="mt-12 max-w-lg space-y-4">
-            <div>
-                <flux:heading>{{ __('Delete role') }}</flux:heading>
-
-                @if ($this->role->users_count > 0)
-                    <flux:subheading>
-                        {{ trans_choice('Reassign the :count user in this role before deleting it.|Reassign the :count users in this role before deleting it.', $this->role->users_count, ['count' => $this->role->users_count]) }}
-                    </flux:subheading>
-                @else
-                    <flux:subheading>{{ __('This role has no users and can be deleted.') }}</flux:subheading>
-                @endif
-            </div>
-
-            <flux:error name="delete" />
-
-            <flux:modal.trigger name="confirm-role-deletion">
-                <flux:button variant="danger" :disabled="$this->role->users_count > 0" data-test="delete-role-button">
-                    {{ __('Delete role') }}
-                </flux:button>
-            </flux:modal.trigger>
-
-            <flux:modal name="confirm-role-deletion" class="max-w-lg">
-                <div class="space-y-6">
-                    <div>
-                        <flux:heading size="lg" class="pe-8">{{ __('Delete the :name role?', ['name' => $this->role->name]) }}</flux:heading>
-                        <flux:subheading>{{ __('This cannot be undone.') }}</flux:subheading>
-                    </div>
-
-                    <div class="flex justify-end gap-2">
-                        <flux:modal.close>
-                            <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
-                        </flux:modal.close>
-
-                        <flux:button variant="danger" wire:click="delete" data-test="confirm-delete-role-button">
-                            {{ __('Delete role') }}
-                        </flux:button>
-                    </div>
+                    <flux:button variant="ghost" :href="route('roles.index')" wire:navigate>
+                        {{ __('Cancel') }}
+                    </flux:button>
                 </div>
-            </flux:modal>
-        </section>
-    @endif
+            </form>
+        </flux:card>
+
+        @if ($this->role)
+            <flux:card class="space-y-4">
+                <div>
+                    <flux:heading>{{ __('Delete role') }}</flux:heading>
+
+                    @if ($this->role->users_count > 0)
+                        <flux:subheading>
+                            {{ trans_choice('Reassign the :count user in this role before deleting it.|Reassign the :count users in this role before deleting it.', $this->role->users_count, ['count' => $this->role->users_count]) }}
+                        </flux:subheading>
+                    @else
+                        <flux:subheading>{{ __('This role has no users and can be deleted.') }}</flux:subheading>
+                    @endif
+                </div>
+
+                <flux:error name="delete" />
+
+                <flux:modal.trigger name="confirm-role-deletion">
+                    <flux:button variant="danger" :disabled="$this->role->users_count > 0" data-test="delete-role-button">
+                        {{ __('Delete role') }}
+                    </flux:button>
+                </flux:modal.trigger>
+
+                <flux:modal name="confirm-role-deletion" class="max-w-lg">
+                    <div class="space-y-6">
+                        <div>
+                            <flux:heading size="lg" class="pe-8">{{ __('Delete the :name role?', ['name' => $this->role->name]) }}</flux:heading>
+                            <flux:subheading>{{ __('This cannot be undone.') }}</flux:subheading>
+                        </div>
+
+                        <div class="flex justify-end gap-2">
+                            <flux:modal.close>
+                                <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
+                            </flux:modal.close>
+
+                            <flux:button variant="danger" wire:click="delete" data-test="confirm-delete-role-button">
+                                {{ __('Delete role') }}
+                            </flux:button>
+                        </div>
+                    </div>
+                </flux:modal>
+            </flux:card>
+        @endif
+    </div>
 </section>
