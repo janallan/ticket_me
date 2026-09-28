@@ -104,6 +104,7 @@ The first version of the helpdesk: staff open tickets, and the agents in the tic
   - Streams the file from the private disk.
 
 ## 5. UI
+- [x] **`Dashboard`** (`/dashboard`, the home page). One page with three variants, picked from what the user may see (`Ticket::visibleTo`): **all** (`tickets-all`) and **departments** (`tickets`) show tiles for Open, Unassigned, Assigned to me and Closed in the last 7 days, the "Assigned to me" and "Waiting longest for someone" lists, and open tickets by status and by department; **mine** (no ticket permission) shows My open tickets, Closed in the last 7 days, All my tickets, my recent tickets and my open tickets by status. Every tile and row links to the matching filtered ticket list.
 - [x] **`Tickets/TicketList`** (`/tickets`):
   - Lists every ticket the user can see. A row of switches under the filters narrows it: **Opened by me** (everyone), **Assigned to me** and **Unassigned** (only people who work tickets; turning one on turns the other off), and **Show closed**. All of them are kept in the URL.
   - Filters: search by number, subject or description, status, priority, department. Closed tickets are hidden unless "Show closed" is on.
