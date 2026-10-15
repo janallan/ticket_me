@@ -2,12 +2,13 @@
 @php
     $canManageUsers = auth()->user()->can('viewAny', App\Models\User::class);
     $canManageRoles = auth()->user()->can('viewAny', Spatie\Permission\Models\Role::class);
+    $canManageAppSettings = auth()->user()->can('view', App\Models\AppSettings::class);
     $canManageDepartments = auth()->user()->can('viewAny', App\Models\Department::class);
     $canManageTicketStatuses = auth()->user()->can('viewAny', App\Models\TicketStatus::class);
     $canManageTicketPriorities = auth()->user()->can('viewAny', App\Models\TicketPriority::class);
 @endphp
 
-@if ($canManageUsers || $canManageRoles)
+@if ($canManageUsers || $canManageRoles || $canManageAppSettings)
     <flux:sidebar.group :heading="__('Administration')" class="grid mt-3">
         @if ($canManageUsers)
             <flux:sidebar.item icon="users" :href="route('users.index')" :current="request()->routeIs('users.*')" wire:navigate>
@@ -18,6 +19,12 @@
         @if ($canManageRoles)
             <flux:sidebar.item icon="shield-check" :href="route('roles.index')" :current="request()->routeIs('roles.*')" wire:navigate>
                 {{ __('Roles') }}
+            </flux:sidebar.item>
+        @endif
+
+        @if ($canManageAppSettings)
+            <flux:sidebar.item icon="cog-8-tooth" :href="route('app-settings')" :current="request()->routeIs('app-settings')" wire:navigate>
+                {{ __('App settings') }}
             </flux:sidebar.item>
         @endif
     </flux:sidebar.group>

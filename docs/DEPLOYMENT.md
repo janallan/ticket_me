@@ -76,14 +76,17 @@ These steps are for a Linux server with Nginx, PHP-FPM, MySQL and Supervisor. Ad
    ```bash
    php artisan migrate --force
    php artisan db:seed --force
+   php artisan storage:link
    ```
+   `storage:link` makes the logos, favicon and sign-in background uploaded in **App settings** reachable at `/storage`.
+
    Then sign in as **admin@example.com** / **password** and **change that password straight away**, or create your own administrator and deactivate the seeded one.
 7. **Make the writable folders writable** by the web server user:
    ```bash
    sudo chown -R www-data:www-data storage bootstrap/cache
    sudo chmod -R ug+rwX storage bootstrap/cache
    ```
-   Attachments are stored on the private disk in `storage/app/private`. Keep `storage` on persistent storage and include it in your backups, together with the database.
+   Ticket attachments are stored on the private disk in `storage/app/private`, and the App settings uploads on the public disk in `storage/app/public`. Keep `storage` on persistent storage and include it in your backups, together with the database.
 8. **Cache the configuration** for speed:
    ```bash
    php artisan optimize
@@ -155,3 +158,4 @@ php artisan up
 - `app:acl-sync` creates any new permissions and removes ones that were dropped from the code (also from every role). It never grants permissions to roles: if a release adds a permission, tick it on the roles that should have it in the **Roles** screen.
 - `queue:restart` makes the worker pick up the new code.
 - Don't run `db:seed` on an existing database; it skips tables that already have data.
+- Upgrading to v1.1 or later from v1.0: run `php artisan storage:link` once, so App settings uploads are served.

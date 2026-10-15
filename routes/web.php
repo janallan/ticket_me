@@ -14,3 +14,4 @@ require __DIR__.'/users.php';
 require __DIR__.'/roles.php';
 require __DIR__.'/tickets.php';
 require __DIR__.'/ticket-settings.php';
+require __DIR__.'/app-settings.php';

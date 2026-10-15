@@ -16,6 +16,7 @@ Conventions for all new work:
 | Version | Goal | Status | Plan |
 |---|---|---|---|
 | v1 | Ticketing: departments, statuses and priorities, tickets with replies, internal notes, attachments and email notifications | **Shipped** 2026-09-29 (CI green, manual verification done) | [ROADMAP-v1.md](ROADMAP-v1.md) |
+| v1.1 | Company customization in a new **App settings** screen: name, logos, favicon, brand colour, email sender and branding, and the sign-in page | Built and tested. The manual verification is still to do before it ships. | [ROADMAP-v1.1.md](ROADMAP-v1.1.md) |
 
 To plan a new version, add `ROADMAP-v{version}.md` next to this file, using the same sections as v1: decisions, then numbered work areas with checkboxes, tests and verification. Then add a row to this table. When a version ships, move what it built into **Done** below and mark its row as shipped.
 

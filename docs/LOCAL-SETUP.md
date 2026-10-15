@@ -43,7 +43,7 @@ These steps are for Ubuntu or Debian. On other Linux distributions, install the 
    cd ticket
    composer run setup
    ```
-   This runs `composer install`, copies `.env.example` to `.env`, generates the app key, runs the migrations on the example's SQLite database, runs `npm install` and builds the assets.
+   This runs `composer install`, copies `.env.example` to `.env`, generates the app key, runs the migrations on the example's SQLite database, links `public/storage` (for the logos and images uploaded in **App settings**), runs `npm install` and builds the assets.
 6. **Create a MySQL database and user:**
    ```bash
    sudo mysql -e "CREATE DATABASE ticket_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

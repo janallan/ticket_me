@@ -32,6 +32,12 @@
                     </flux:navbar.item>
                 @endcan
 
+                @can('view', App\Models\AppSettings::class)
+                    <flux:navbar.item icon="cog-8-tooth" :href="route('app-settings')" :current="request()->routeIs('app-settings')" wire:navigate>
+                        {{ __('App settings') }}
+                    </flux:navbar.item>
+                @endcan
+
                 @if (auth()->user()->can('viewAny', App\Models\Department::class)
                     || auth()->user()->can('viewAny', App\Models\TicketStatus::class)
                     || auth()->user()->can('viewAny', App\Models\TicketPriority::class))
