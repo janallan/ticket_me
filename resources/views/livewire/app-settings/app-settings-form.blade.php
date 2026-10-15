@@ -109,6 +109,47 @@
                     <flux:textarea wire:model="appSettingsForm.mailFooter" :label="__('Footer text')" rows="3"
                         :description="__('Shown under every email, for example your address or a support phone number.')" />
                 </flux:card>
+
+                <flux:card class="space-y-6" data-test="mail-server-card">
+                    <div>
+                        <flux:heading>{{ __('Mail server') }}</flux:heading>
+                        <flux:text class="text-sm">{{ __('How emails are sent. Saved to the MAIL_* values in the .env file.') }}</flux:text>
+                    </div>
+
+                    <flux:select wire:model="appSettingsForm.mailMailer" :label="__('Delivery method')" description="MAIL_MAILER">
+                        @foreach ($this->mailerOptions as $mailerKey => $mailerLabel)
+                            <flux:select.option :value="$mailerKey" wire:key="mailer-{{ $mailerKey }}">{{ __($mailerLabel) }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div class="sm:col-span-2">
+                            <flux:input wire:model="appSettingsForm.mailHost" :label="__('SMTP host')" description="MAIL_HOST" placeholder="smtp.example.com" />
+                        </div>
+                        <flux:input wire:model="appSettingsForm.mailPort" type="number" min="1" max="65535" :label="__('Port')" description="MAIL_PORT" placeholder="587" />
+                    </div>
+
+                    <flux:select wire:model="appSettingsForm.mailScheme" :label="__('Encryption')" description="MAIL_SCHEME">
+                        @foreach (App\Actions\AppSettings\UpdateMailServer::SCHEMES as $schemeKey => $schemeLabel)
+                            <flux:select.option :value="$schemeKey" wire:key="scheme-{{ $schemeKey }}">{{ __($schemeLabel) }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="appSettingsForm.mailUsername" :label="__('Username')" description="MAIL_USERNAME" autocomplete="off" />
+                        <flux:input wire:model="appSettingsForm.mailPassword" type="password" viewable :label="__('Password')" description="MAIL_PASSWORD" autocomplete="new-password"
+                            :placeholder="App\Actions\AppSettings\UpdateMailServer::current()['hasPassword'] ? __('Saved. Leave empty to keep it.') : null" />
+                    </div>
+
+                    <flux:text variant="subtle" class="text-sm">{{ __('The host, port, encryption, username and password are used only when the delivery method is SMTP.') }}</flux:text>
+
+                    <div class="flex flex-wrap items-center gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                        <flux:button type="button" icon="paper-airplane" wire:click="sendTestEmail" data-test="send-test-email-button">
+                            {{ __('Send test email') }}
+                        </flux:button>
+                        <flux:text variant="subtle" class="text-sm">{{ __('Sent to :email with the saved settings. Save your changes first.', ['email' => auth()->user()->email]) }}</flux:text>
+                    </div>
+                </flux:card>
             @endif
 
             @if ($tab === 'sign-in')

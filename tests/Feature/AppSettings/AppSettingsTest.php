@@ -7,9 +7,14 @@ use App\Models\AppSettings;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
+use Dotenv\Dotenv;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -140,6 +145,142 @@ class AppSettingsTest extends TestCase
         $this->assertNull(AppSettings::current()->accent_color);
     }
 
+    public function test_the_mail_server_is_saved_to_the_env_file_and_the_password_is_never_sent_back(): void
+    {
+        $envPath = $this->useTemporaryEnvironmentFile();
+        $this->actingAs($this->admin());
+
+        Livewire::test(AppSettingsForm::class)
+            ->set('appSettingsForm.mailMailer', 'smtp')
+            ->set('appSettingsForm.mailHost', 'smtp.acme.test')
+            ->set('appSettingsForm.mailPort', '465')
+            ->set('appSettingsForm.mailScheme', 'smtps')
+            ->set('appSettingsForm.mailUsername', 'helpdesk')
+            ->set('appSettingsForm.mailPassword', 'p@ss "w#rd" $HOME')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSet('appSettingsForm.mailPassword', '');
+
+        $env = Dotenv::parse((string) file_get_contents($envPath));
+
+        $this->assertSame('smtp', $env['MAIL_MAILER']);
+        $this->assertSame('smtp.acme.test', $env['MAIL_HOST']);
+        $this->assertSame('465', $env['MAIL_PORT']);
+        $this->assertSame('smtps', $env['MAIL_SCHEME']);
+        $this->assertSame('helpdesk', $env['MAIL_USERNAME']);
+        $this->assertSame('p@ss "w#rd" $HOME', $env['MAIL_PASSWORD']);
+        $this->assertSame('base64:keep-me', $env['APP_KEY']);
+        $this->assertSame('smtp.acme.test', config('mail.mailers.smtp.host'));
+        $this->assertNotNull(Cache::get('illuminate:queue:restart'));
+
+        Livewire::test(AppSettingsForm::class)
+            ->assertSet('appSettingsForm.mailHost', 'smtp.acme.test')
+            ->assertSet('appSettingsForm.mailPassword', '')
+            ->assertDontSeeHtml('p@ss')
+            ->set('appSettingsForm.mailUsername', 'support')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $env = Dotenv::parse((string) file_get_contents($envPath));
+
+        $this->assertSame('support', $env['MAIL_USERNAME']);
+        $this->assertSame('p@ss "w#rd" $HOME', $env['MAIL_PASSWORD']);
+    }
+
+    public function test_smtp_needs_a_host_and_port_and_the_mailer_must_be_known(): void
+    {
+        $envPath = $this->useTemporaryEnvironmentFile();
+        $original = file_get_contents($envPath);
+        $this->actingAs($this->admin());
+
+        Livewire::test(AppSettingsForm::class)
+            ->set('appSettingsForm.mailMailer', 'smtp')
+            ->set('appSettingsForm.mailHost', '')
+            ->set('appSettingsForm.mailPort', '')
+            ->call('save')
+            ->assertHasErrors(['appSettingsForm.mailHost' => 'required_if', 'appSettingsForm.mailPort' => 'required_if']);
+
+        Livewire::test(AppSettingsForm::class)
+            ->set('appSettingsForm.mailMailer', 'ses')
+            ->call('save')
+            ->assertHasErrors(['appSettingsForm.mailMailer']);
+
+        Livewire::test(AppSettingsForm::class)
+            ->set('appSettingsForm.mailMailer', 'smtp')
+            ->set('appSettingsForm.mailHost', 'smtp.acme.test')
+            ->set('appSettingsForm.mailPort', '587')
+            ->set('appSettingsForm.mailPassword', "secret\nAPP_DEBUG=true")
+            ->call('save')
+            ->assertHasErrors(['appSettingsForm.mailPassword']);
+
+        $this->assertSame($original, file_get_contents($envPath));
+    }
+
+    public function test_another_mailer_keeps_the_smtp_values_and_other_tabs_leave_the_env_file_alone(): void
+    {
+        $envPath = $this->useTemporaryEnvironmentFile();
+        $this->actingAs($this->admin());
+
+        Livewire::test(AppSettingsForm::class)
+            ->set('appSettingsForm.name', 'Acme Helpdesk')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame($this->environmentFileContents(), file_get_contents($envPath));
+
+        Livewire::test(AppSettingsForm::class)
+            ->set('appSettingsForm.mailMailer', 'log')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $env = Dotenv::parse((string) file_get_contents($envPath));
+
+        $this->assertSame('log', $env['MAIL_MAILER']);
+        $this->assertSame('127.0.0.1', $env['MAIL_HOST']);
+    }
+
+    public function test_an_unwritable_env_file_shows_an_error_and_saves_nothing(): void
+    {
+        $this->app->useEnvironmentPath(storage_path('framework/testing/missing'));
+        $this->actingAs($this->admin());
+
+        Livewire::test(AppSettingsForm::class)
+            ->set('appSettingsForm.name', 'Acme Helpdesk')
+            ->set('appSettingsForm.mailMailer', 'log')
+            ->call('save')
+            ->assertHasErrors(['appSettingsForm.mailMailer']);
+
+        $this->assertNull(AppSettings::current()->name);
+    }
+
+    public function test_a_test_email_is_sent_to_the_signed_in_user(): void
+    {
+        $this->actingAs($admin = $this->admin());
+
+        Livewire::test(AppSettingsForm::class)
+            ->call('sendTestEmail')
+            ->assertDispatched('toast-show', fn (string $name, array $params) => $params['dataset']['variant'] === 'success');
+
+        $messages = Mail::mailer('array')->getSymfonyTransport()->messages();
+
+        $this->assertCount(1, $messages);
+        $this->assertSame($admin->email, $messages->first()->getEnvelope()->getRecipients()[0]->getAddress());
+    }
+
+    public function test_a_failing_test_email_shows_the_error(): void
+    {
+        $this->useTemporaryEnvironmentFile();
+        $this->actingAs($this->admin());
+
+        Livewire::test(AppSettingsForm::class)
+            ->set('appSettingsForm.mailMailer', 'smtp')
+            ->set('appSettingsForm.mailHost', '127.0.0.1')
+            ->set('appSettingsForm.mailPort', '1')
+            ->call('save')
+            ->call('sendTestEmail')
+            ->assertDispatched('toast-show', fn (string $name, array $params) => $params['dataset']['variant'] === 'danger');
+    }
+
     public function test_the_open_tab_is_kept_and_unknown_tabs_fall_back_to_branding(): void
     {
         $this->actingAs($this->admin());
@@ -156,5 +297,25 @@ class AppSettingsTest extends TestCase
     private function admin(): User
     {
         return User::factory()->create()->assignRole('Admin');
+    }
+
+    /**
+     * Point the app at a throwaway `.env` file, so tests never write the real one.
+     */
+    private function useTemporaryEnvironmentFile(): string
+    {
+        $directory = storage_path('framework/testing/env-'.Str::random(8));
+        File::ensureDirectoryExists($directory);
+        File::put($directory.'/.env', $this->environmentFileContents());
+
+        $this->app->useEnvironmentPath($directory);
+        $this->beforeApplicationDestroyed(fn () => File::deleteDirectory($directory));
+
+        return $directory.'/.env';
+    }
+
+    private function environmentFileContents(): string
+    {
+        return "APP_KEY=base64:keep-me\n\n# Mail\nMAIL_MAILER=array\nMAIL_HOST=127.0.0.1\nMAIL_PORT=2525\n";
     }
 }

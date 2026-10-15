@@ -11,12 +11,13 @@ Lets the organisation running the helpdesk put its own name, logos, colour and e
 - **What can be customized:**
   - **Name and logos:** the company name (used as the app name), a logo for light mode, a logo for dark mode, and the favicon.
   - **Brand colour:** the accent colour for primary buttons, links and highlights.
-  - **Emails:** the sender name and address, and a logo and footer text in notification emails.
+  - **Emails:** the sender name and address, the mail server (SMTP host, port, encryption, username and password, or the log file), and a logo and footer text in notification emails.
   - **Sign-in page:** a welcome heading and message, and an optional background image.
 - **Who can change it:** anyone with the existing `roles` permission. There is no new permission; the policy checks `Permission::Roles`.
 - **Defaults stay TicketMe.** Every setting is optional. When one is empty, the app falls back to what it shows today: the TicketMe logos and favicon, the current accent colours, `APP_NAME`, and `MAIL_FROM_ADDRESS` / `MAIL_FROM_NAME`.
 - **One screen, one row: App settings.** All settings live in a single `app_settings` row, edited on one **App settings** screen under Administration, with a tab per area (Branding, Email, Sign-in page). The name keeps it apart from each user's personal **Settings** (profile, security, appearance), and later versions add more tabs there (for example a General tab for time zone, date format and attachment limits) instead of new screens. Settings are cached and the cache is cleared on save.
 - **Uploads are public files.** Logos, the favicon and the sign-in background must be reachable by browsers and email clients, so they go on the `public` disk under `app-settings/`. This needs `php artisan storage:link` on every install.
+- **The mail server is saved to `.env`, not the settings row.** On save, the Email tab writes `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_SCHEME`, `MAIL_USERNAME` and `MAIL_PASSWORD` to `.env` (only when they changed; empty fields are written as `null`), then clears a cached config and runs `queue:restart` so the worker picks them up. The web server needs write access to `.env`. The password is never sent back to the browser, and an empty password field keeps the saved one. Switching to another mailer keeps the SMTP values in `.env`.
 - **No SVG uploads.** An uploaded SVG opened directly in the browser can run scripts, so uploads accept PNG, JPG and WebP only (plus ICO and PNG for the favicon). The bundled TicketMe SVGs stay as the defaults.
 
 ## 1. Data model
@@ -55,7 +56,7 @@ Lets the organisation running the helpdesk put its own name, logos, colour and e
 | Tab | Contents |
 |---|---|
 | **Branding** | Company name, light logo, dark logo, favicon (each upload with a preview and a "Remove" button that returns to the default), and the brand colour: a colour picker with a hex field, a live preview of a primary button and a link, and "Reset to default" |
-| **Email** | Sender name and address, email logo, footer text |
+| **Email** | Sender name and address, email logo, footer text, and a **Mail server** card with one field per `WRITABLE_KEYS` key, each labelled with its `.env` name: delivery method (SMTP, sendmail or log file; any other mailer already in `.env` is kept as an option), SMTP host, port, encryption, username and password, and a "Send test email" button that sends to the signed-in user straight away |
 | **Sign-in page** | Heading, message, background image, with a preview |
 
 - [x] **Menu:** an **App settings** item under Administration, shown to holders of `roles`.
@@ -66,6 +67,7 @@ Lets the organisation running the helpdesk put its own name, logos, colour and e
 
 ## 5. Emails
 - [x] **Sender:** set `mail.from` from the settings at boot, so every notification uses it.
+- [x] **Mail server:** `WriteEnvironmentFile` replaces or appends `KEY=value` lines in `.env`, only for the keys in its `WRITABLE_KEYS` allowlist (the six `MAIL_*` server keys), so it can never change `APP_KEY` or the database credentials (quoting and escaping values so dotenv reads them back unchanged, rejecting line breaks); `UpdateMailServer` writes the `MAIL_*` values, applies them to this request, clears a cached config and restarts the queue worker.
 - [x] **Theme:** publish Laravel's mail views and keep only the changed ones (`resources/views/vendor/mail/html/message.blade.php`, `html/header.blade.php`, `text/message.blade.php`): the header shows the email logo (or the company name when there is none) and the footer shows the footer text. A long-running queue worker re-reads the settings before every job.
 - [x] **App name in emails:** subjects and greetings that use `config('app.name')` pick up the company name.
 
@@ -74,6 +76,8 @@ Lets the organisation running the helpdesk put its own name, logos, colour and e
   - Only holders of `roles` can open and save the screen.
   - Text fields save, and uploads are stored, replaced (old file deleted) and removed.
   - Invalid uploads (SVG, too large) and invalid or low-contrast colours are rejected.
+  - The mail server is written to `.env` (a temporary file in tests) with special characters intact and the password never sent back; SMTP needs a host and port; line breaks are rejected; other tabs leave `.env` alone; an unwritable `.env` shows an error and saves nothing; the test email is sent, or its error shown.
+- [x] **`AppSettings/WriteEnvironmentFileTest`:** keys are replaced in place (line endings and comments kept) or appended, and values with quotes, `#` and `$` read back unchanged.
 - [x] **`AppSettings/AppBrandingTest`:**
   - With no settings, every value is the TicketMe or `.env` default.
   - With settings, pages show the company name in the title, the uploaded logos and favicon, and the accent variables.
@@ -93,4 +97,5 @@ Lets the organisation running the helpdesk put its own name, logos, colour and e
    - Remove the uploads and reset the colour; the TicketMe defaults return.
    - On the **Sign-in page** tab, set the heading, message and background, sign out, and check the sign-in page.
    - On the **Email** tab, set the sender, logo and footer, trigger a ticket email, and check it in `storage/logs/laravel.log`.
+   - On the **Email** tab, choose SMTP, enter a real server, save, and use **Send test email**; then a wrong password shows the error. Check that `.env` has the new `MAIL_*` values.
 4. CI passes on GitHub Actions.

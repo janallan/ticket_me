@@ -54,7 +54,7 @@ Sign in as **admin@example.com** / **password**. The guides explain each step, a
 - **Email notifications** for new tickets, assignment, replies, internal notes and status changes, sent only to active users and never to the person who caused the event.
 - **Dashboard** with ticket counts, "assigned to me" and "waiting longest" lists, and open tickets by status and department, scoped to what the user can see.
 - **Administration.** Users (one role each, one or more departments with a default), roles and their permissions, and the ticket settings: departments, statuses and priorities.
-- **App settings.** Put your company's name, logos, favicon and brand colour on the helpdesk, set the email sender, logo and footer, and add a welcome message and background to the sign-in page. Anything left empty uses the TicketMe defaults.
+- **App settings.** Put your company's name, logos, favicon and brand colour on the helpdesk, set the email sender, mail server (SMTP), logo and footer, and add a welcome message and background to the sign-in page. Anything left empty uses the TicketMe defaults.
 - **Accounts.** Login, password reset, email verification, two-factor authentication and passkeys. There is no public registration; administrators create users, who receive a link to set their password.
 
 Built with Laravel 13, Livewire 4 (class-based components), Flux UI (free), Tailwind CSS 4, Fortify and spatie/laravel-permission.

@@ -85,6 +85,7 @@ These steps are for a Linux server with Nginx, PHP-FPM, MySQL and Supervisor. Ad
    ```bash
    sudo chown -R www-data:www-data storage bootstrap/cache
    sudo chmod -R ug+rwX storage bootstrap/cache
+   sudo chown www-data:www-data .env && sudo chmod 640 .env
    ```
    Ticket attachments are stored on the private disk in `storage/app/private`, and the App settings uploads on the public disk in `storage/app/public`. Keep `storage` on persistent storage and include it in your backups, together with the database.
 8. **Cache the configuration** for speed:
